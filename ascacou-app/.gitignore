@@ -1,0 +1,49 @@
+# Dépendances
+node_modules/
+.pnpm-store/
+
+# Build Vite
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Caches outils
+.cache/
+.eslintcache
+.parcel-cache/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Environnement
+.env
+.env.*
+!.env.example
+
+# Positions du jeu (volumineux, hors dépôt)
+IA/
+
+# Fichiers générés
+graph.svg
+database/
+*.new
+
+# Éditeurs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+
+# Fichiers système
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

@@ -1,0 +1,9 @@
+# Les règles propres à l'app sont dans ascacou-app/.gitignore.
+
+# Ancienne version (et ses 7,5 Go de positions dans IA/), gardée hors dépôt
+previous-version/
+
+# Fichiers système
+.DS_Store
+._*
+Thumbs.db

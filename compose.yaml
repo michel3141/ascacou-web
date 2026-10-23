@@ -1,0 +1,13 @@
+
+services:
+  node:
+    build: .
+    user: node
+    working_dir: /workspace
+    environment:
+      LANG: fr_FR.UTF-8
+    volumes:
+      - ./ascacou-app:/workspace
+    stdin_open: true
+    tty: true
+
