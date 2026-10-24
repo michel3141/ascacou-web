@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { RoomIndex } from './resources/Room';
 import { useIdentityActions, useUserId } from './features/identity';
+import { useChannel } from './cable';
 
 function Identity() {
   const userId = useUserId();
@@ -23,7 +24,10 @@ function Identity() {
   );
 }
 
+const lobby = { channel: 'LobbyChannel' };
+
 export default function App() {
+  useChannel(lobby);
   return (
     <main>
       <h1>Ascacou</h1>

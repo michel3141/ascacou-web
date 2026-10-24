@@ -1,6 +1,7 @@
-import rtk from '@lpr/rtk';
+import rtk, { addListener } from '@lpr/rtk';
 import { createActionsHook, createSelectorHooks } from '@lpr/rtk/react';
-import { client, clientApplication } from '../../api';
+import { client } from '../../api';
+import { reconnect } from '../../cable';
 
 // Identité anonyme : un JWT, stocké par spraypaint (localStorage), qui porte l'id du
 // joueur (sub). POST /users le crée ; le back le renouvelle dans l'en-tête X-JWT.
@@ -9,7 +10,7 @@ const { createActions, createReducer, createSelectors } = rtk(name);
 
 const storedUserId = () => {
   try {
-    const jwt = localStorage.getItem(`${clientApplication}-jwt`);
+    const jwt = client.model('users').getJWT();
     return jwt ? String(JSON.parse(atob(jwt.split('.')[1])).sub) : null;
   } catch {
     return null;
@@ -42,4 +43,9 @@ export const useIdentityActions = createActionsHook(actions);
 export const { selectUserId } = selectors;
 export const { useUserId } = createSelectorHooks(selectors);
 
-export default { name, reducer };
+// Le cable prend le nouveau jeton (il était anonyme).
+const listeners = [
+  addListener(actions.createIdentity.fulfilled, (_, { dispatch }) => dispatch(reconnect())),
+];
+
+export default { name, reducer, listeners };

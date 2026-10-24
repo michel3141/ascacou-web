@@ -25,6 +25,7 @@ export const RoomIndex = (props) => (
   <Index
     scope={roomScope}
     Obs={Room}
+    shouldRefresh={(action, { type }) => action === 'create' && type === 'rooms'}
     {...props}
   />
 );
