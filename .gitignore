@@ -1,7 +1,8 @@
 # Les règles propres à l'app sont dans ascacou-web/.gitignore.
 
 # Ancienne version (et ses 7,5 Go de positions dans IA/), gardée hors dépôt
-previous-version/
+previous-*/
+exemples-*/
 
 # Fichiers système
 .DS_Store
