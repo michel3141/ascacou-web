@@ -4,10 +4,15 @@ services:
     build: .
     user: node
     working_dir: /workspace
+    command: sh -c 'pnpm install && pnpm dev'
     environment:
       LANG: fr_FR.UTF-8
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
     volumes:
       - ./ascacou-web:/workspace
+    ports:
+      - "5173:5173" # serveur de dev vite (API et cable relayés vers le back)
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # le back de dev, sur l'hôte (port 3000)
     stdin_open: true
     tty: true
-

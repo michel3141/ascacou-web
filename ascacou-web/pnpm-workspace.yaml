@@ -1,0 +1,3 @@
+# Nos libs sont installables dès leur publication (pnpm attend sinon un délai).
+minimumReleaseAgeExclude:
+  - '@lpr/*'
