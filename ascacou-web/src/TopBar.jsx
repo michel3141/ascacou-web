@@ -5,8 +5,9 @@ import { useUserId } from './features/identity';
 import { UserShow } from './resources/User';
 
 // Barre du haut : le logo (retour à l'accueil), les actions de la page (annuler,
-// abandonner, fermer le salon) et, sur l'accueil seulement, le nom du joueur (dans un
-// salon, il est déjà dans son bandeau). Une page y place ses actions avec <TopBarActions>, où qu'elle soit dans l'arbre.
+// abandonner, fermer le salon) et, sur l'accueil seulement, le pseudo du joueur,
+// modifiable (dans un salon, il est déjà dans son bandeau). Une page y place ses
+// actions avec <TopBarActions>, où qu'elle soit dans l'arbre.
 const SlotContext = createContext(null);
 
 export function TopBarActions({ children }) {
@@ -36,7 +37,10 @@ export function TopBarProvider({ children }) {
         />
         {home && userId && (
           <span className="text-sm text-ink-soft">
-            <UserShow id={userId} />
+            <UserShow
+              id={userId}
+              editable
+            />
           </span>
         )}
       </header>

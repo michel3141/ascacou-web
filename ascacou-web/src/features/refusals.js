@@ -1,4 +1,5 @@
-// Refus du serveur (422) : un code stable dans errors[].meta.code, traduit ici.
+// Refus du serveur (422) : un code stable dans errors[].meta.code (refus métier, ou
+// validation d'un modèle), traduit ici.
 const messages = {
   not_a_player: "Vous n'êtes pas joueur de ce salon.",
   not_your_turn: "Ce n'est pas à vous de jouer.",
@@ -16,6 +17,9 @@ const messages = {
   not_drafting: 'La pioche est terminée.',
   card_taken: 'Cette carte est déjà prise.',
   hand_full: 'Ce jeu a déjà ses 8 cartes.',
+  // Validations des modèles (pseudo…)
+  blank: 'Ne peut pas être vide.',
+  too_long: 'Trop long.',
 };
 
 // Une erreur spraypaint (model.errors[attribut]) : { code, message }.

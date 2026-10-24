@@ -20,6 +20,10 @@ export default function Identity() {
         value={name}
         onChange={(event) => setName(event.target.value)}
         placeholder="Pseudo"
+        maxLength={30}
+        spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
       />
       <button className="btn">Jouer</button>
     </form>
