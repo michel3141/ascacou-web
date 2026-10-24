@@ -11,11 +11,11 @@ const { createActions, createReducer } = rtk(name);
 
 const actions = createActions({
   reloadGame: async ({ id }) => {
-    const { data } = await client.api('/games').find(id);
+    const { data } = await client.api('/games').show.find(id);
     return { id: data.id, version: data.lockVersion };
   },
   reloadRoom: async ({ code }) => {
-    const { data } = await client.api('/rooms').find(code);
+    const { data } = await client.api('/rooms').show.find(code);
     return { code: data.id };
   },
 });

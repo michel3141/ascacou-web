@@ -18,7 +18,14 @@ const cableUrl = () => {
 };
 
 const consumer = createConsumer(cableUrl);
-const subscriptions = new Map(); // identifiant (JSON) => abonnement
+
+// Abonnements en cours, par identifiant (JSON) : { subscription, users, timer, release }.
+// Plusieurs utilisateurs d'un même canal partagent un abonnement ; le désabonnement réel
+// est différé, et annulé par un réabonnement immédiat (StrictMode, remontage) : le
+// serveur traite les commandes en parallèle, et un désabonnement glissé entre deux
+// abonnements lui ferait perdre le flux.
+const subscriptions = new Map();
+const RELEASE_DELAY = 1000;
 
 const events = createEvents({
   connected: (identifier) => ({ identifier }),
@@ -31,26 +38,41 @@ const actions = createActions({
   // Abonnement à un canal ; renvoie la fonction de désabonnement. `ping` : intervalle
   // (ms) du signe de vie attendu par le canal (RoomChannel : 30 s).
   subscribe: (identifier, options) => (dispatch) => {
-    const ping = options?.ping;
     const key = JSON.stringify(identifier);
-    const subscription = consumer.subscriptions.create(identifier, {
-      connected: () => dispatch(events.CONNECTED_EVENT(identifier)),
-      disconnected: () => dispatch(events.DISCONNECTED_EVENT(identifier)),
-      rejected: () => dispatch(events.REJECTED_EVENT(identifier)),
-      received: (message) => dispatch(events.RECEIVED_EVENT(identifier, message)),
-    });
-    subscriptions.set(key, subscription);
-    const timer = ping && setInterval(() => subscription.perform('ping'), ping);
+    let entry = subscriptions.get(key);
+    if (entry) {
+      clearTimeout(entry.release);
+    } else {
+      const subscription = consumer.subscriptions.create(identifier, {
+        connected: () => dispatch(events.CONNECTED_EVENT(identifier)),
+        disconnected: () => dispatch(events.DISCONNECTED_EVENT(identifier)),
+        rejected: () => dispatch(events.REJECTED_EVENT(identifier)),
+        received: (message) => dispatch(events.RECEIVED_EVENT(identifier, message)),
+      });
+      const ping = options?.ping;
+      const timer = ping && setInterval(() => subscription.perform('ping'), ping);
+      entry = { subscription, timer, users: 0 };
+      subscriptions.set(key, entry);
+    }
+    entry.users += 1;
+
+    let released = false;
     return () => {
-      clearInterval(timer);
-      subscriptions.delete(key);
-      subscription.unsubscribe();
+      if (released) return;
+      released = true;
+      entry.users -= 1;
+      if (entry.users > 0) return;
+      entry.release = setTimeout(() => {
+        clearInterval(entry.timer);
+        subscriptions.delete(key);
+        entry.subscription.unsubscribe();
+      }, RELEASE_DELAY);
     };
   },
 
   // Action d'un canal (say…), sur un abonnement en cours.
   perform: (identifier, action, data) => () => {
-    subscriptions.get(JSON.stringify(identifier))?.perform(action, data);
+    subscriptions.get(JSON.stringify(identifier))?.subscription.perform(action, data);
   },
 
   // Reconnexion avec le jeton courant (identité créée) ; les abonnements sont repris.
