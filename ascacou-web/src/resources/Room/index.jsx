@@ -3,7 +3,9 @@ import { Link } from 'react-router';
 import { Index, Show, Watch, createScope } from '@lpr/redux-documents/react';
 import { client } from '../../api';
 import { useUserId } from '../../features/identity';
-import { useRoomPresence } from '../../features/presence';
+import { useRoomChannel } from '../../features/roomChannel';
+import { describe } from '../../features/refusals';
+import { GameShow } from '../Game';
 import { UserShow } from '../User';
 
 const roomContext = createContext(null);
@@ -37,7 +39,7 @@ function RoomDetail() {
   const { id, codeLabel, status, host, guestId, score, errors } = useRoom();
   const { modify, committing } = useRoomMeta();
   const userId = useUserId();
-  const { present, viewers } = useRoomPresence(id);
+  const { present, viewers, gameId } = useRoomChannel(id);
   const isPlayer = userId && [host?.id, guestId].map(String).includes(userId);
   const canJoin = userId && status === 'waiting' && !isPlayer;
   // Écriture immédiate : une transition, envoyée tout de suite.
@@ -81,9 +83,21 @@ function RoomDetail() {
         <p
           key={error.attribute}
           className="text-red-700">
-          {error.message}
+          {describe(error).message}
         </p>
       ))}
+      {gameId && (
+        <GameShow
+          id={gameId}
+          me={userId}
+          hostId={String(host?.id)}
+          guestId={guestId && String(guestId)}
+          roomCode={id}
+          opponentAbsent={[host?.id, guestId].some(
+            (p) => p && String(p) !== userId && !present.includes(String(p))
+          )}
+        />
+      )}
     </section>
   );
 }

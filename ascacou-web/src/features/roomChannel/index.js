@@ -2,12 +2,12 @@ import rtk, { addListener } from '@lpr/rtk';
 import { createSelectorHooks } from '@lpr/rtk/react';
 import { RECEIVED_EVENT, perform } from '../../cable';
 
-// Présence des joueurs et nombre de spectateurs d'un salon, tenus par le RoomChannel
-// (rien n'est rechargé par l'API).
-const name = 'presence';
+// État d'un salon tenu par le RoomChannel seul (rien n'est rechargé par l'API) :
+// joueurs présents, nombre de spectateurs, partie en cours.
+const name = 'roomChannel';
 const { createReducer, createSelectors } = rtk(name);
 
-const emptyRoom = { present: [], viewers: 0 };
+const emptyRoom = { present: [], viewers: 0, gameId: null };
 
 const reducer = createReducer(
   {},
@@ -19,6 +19,10 @@ const reducer = createReducer(
         case 'sync':
           room.present = message.present.map(String);
           room.viewers = message.viewers;
+          room.gameId = message.game ? String(message.game.id) : null;
+          break;
+        case 'game':
+          room.gameId = String(message.game.id);
           break;
         case 'presence': {
           const id = String(message.user_id);
@@ -35,7 +39,7 @@ const reducer = createReducer(
 );
 
 const selectors = createSelectors({
-  roomPresence: (state, code) => state[name][code] ?? emptyRoom,
+  roomChannel: (state, code) => state[name][code] ?? emptyRoom,
 });
 
 // Signe de vie immédiat, sans attendre le ping périodique :
@@ -52,7 +56,7 @@ const listeners = [
   }),
 ];
 
-export const { selectRoomPresence } = selectors;
-export const { useRoomPresence } = createSelectorHooks(selectors);
+export const { selectRoomChannel } = selectors;
+export const { useRoomChannel } = createSelectorHooks(selectors);
 
 export default { name, reducer, listeners };
