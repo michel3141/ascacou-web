@@ -2,12 +2,13 @@
 // 25 positions marquées d'un point ; les pions se posent sur les points.
 // `board` = une ligne par rangée (`b` noir, `w` blanc, `.` vide) ; positions "LxC".
 // Positions jouables (legal_moves) pour la couleur choisie ; pions verts sur les
-// positions où plus rien n'est jouable ; dernier pion posé (last_move) marqué.
+// positions où plus rien n'est jouable ; dernier pion posé (last_move) cerclé de gris.
 // `squares` : carrés 2x2 à entourer ({ coord: case en haut à gauche, flash }) — celui
 // d'une carte survolée, ou ceux qu'un coup vient de réaliser (qui s'effacent).
 const STEP = 20;
 const at = (i) => 10 + i * STEP;
 const PIECES = { b: 'fill-ink', w: 'fill-pearl' };
+const SHAPE = 'M0 0h100v100H12A12 12 0 0 1 0 88z';
 
 // Contour d'un carré 2x2, de la forme d'une carte : droit, un coin arrondi en bas à gauche.
 const SIDE = STEP + 19;
@@ -29,9 +30,22 @@ export default function Board({
     <svg
       viewBox="0 0 100 100"
       className="w-full aspect-square select-none">
+      <defs>
+        <clipPath id="board-shape">
+          <path d={SHAPE} />
+        </clipPath>
+      </defs>
+      {/* Le papier du plateau imprimé (aplat de la même couleur en attendant l'image). */}
       <path
-        d="M0 0h100v100H12A12 12 0 0 1 0 88z"
+        d={SHAPE}
         className="fill-paper"
+      />
+      <image
+        href="/board.webp"
+        width="100"
+        height="100"
+        preserveAspectRatio="xMidYMid slice"
+        clipPath="url(#board-shape)"
       />
       {rows.flatMap((row, r) =>
         [...row].map((cell, c) => {
@@ -82,8 +96,9 @@ export default function Board({
                 <circle
                   cx={x}
                   cy={y}
-                  r="2"
-                  className={cell === 'b' ? 'fill-pearl' : 'fill-ink'}
+                  r="8.4"
+                  className="fill-none stroke-ink-faint"
+                  strokeWidth="1"
                 />
               )}
             </g>

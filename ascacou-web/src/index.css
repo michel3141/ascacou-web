@@ -23,3 +23,8 @@
 .card-flash {
   animation: card-flash 0.8s ease-in-out 2;
 }
+
+/* Fond de page : le papier du plateau, très éclairci, pour casser le blanc. */
+body {
+  background: #f4ece3 url('/paper.webp') center / cover fixed;
+}
