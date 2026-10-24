@@ -9,6 +9,7 @@ import { MESSAGES } from '../../features/messages';
 import { describe } from '../../features/refusals';
 import { GameShow } from '../Game';
 import { UserShow } from '../User';
+import { ROOM_STATUS, VISIBILITY } from '../../features/labels';
 
 const roomContext = createContext(null);
 export const useRoom = () => use(roomContext).data;
@@ -19,8 +20,15 @@ export const roomScope = createScope(client, { endpoint: '/rooms', method: 'all'
 function RoomRow() {
   const { id, codeLabel, visibility, status } = useRoom();
   return (
-    <li>
-      <Link to={`/salons/${id}`}>{codeLabel}</Link> — {visibility}, {status}
+    <li className="flex justify-between gap-2 py-1 border-b border-paper-dark">
+      <Link
+        to={`/salons/${id}`}
+        className="underline-offset-4 hover:underline">
+        {codeLabel}
+      </Link>
+      <span className="text-ink-soft text-sm">
+        {VISIBILITY[visibility]}, {ROOM_STATUS[status]}
+      </span>
     </li>
   );
 }
@@ -48,7 +56,7 @@ const DEALS = {
 function Settings() {
   const { dealMethod, allowMultiple, imposedColor } = useRoom();
   const variants = [allowMultiple && 'motif multiple', imposedColor && 'pion imposé'];
-  return <p>{[DEALS[dealMethod], ...variants].filter(Boolean).join(', ')}</p>;
+  return [DEALS[dealMethod], ...variants].filter(Boolean).join(', ');
 }
 
 // Messages prédéfinis : les derniers reçus, et les boutons pour les joueurs.
@@ -63,16 +71,19 @@ function Messages({ code, isPlayer, messages }) {
         </p>
       ))}
       {isPlayer && (
-        <div className="flex flex-wrap gap-1">
-          {Object.entries(MESSAGES).map(([message, text]) => (
-            <button
-              key={message}
-              className="border px-2 py-0.5 text-sm"
-              onClick={() => say(message)}>
-              {text}
-            </button>
-          ))}
-        </div>
+        <details>
+          <summary className="cursor-pointer text-sm text-ink-soft">Messages</summary>
+          <div className="flex flex-wrap gap-1 pt-1">
+            {Object.entries(MESSAGES).map(([message, text]) => (
+              <button
+                key={message}
+                className="btn text-sm px-2 py-0.5"
+                onClick={() => say(message)}>
+                {text}
+              </button>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );
@@ -89,26 +100,28 @@ function RoomDetail() {
   const change = (changes) => modify(changes, { delay: 0 });
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xl">{codeLabel}</h2>
-      <p>Statut : {status}</p>
-      <Settings />
-      <p>
-        <Player
-          id={host?.id}
-          present={present}
-        />{' '}
-        contre{' '}
-        <Player
-          id={guestId}
-          present={present}
-        />
-        {score && ` — ${score.host} à ${score.guest}`}
-      </p>
-      <p>Spectateurs : {viewers}</p>
+      <header className="flex flex-col gap-1">
+        <h2 className="title text-lg">{codeLabel}</h2>
+        <p className="text-sm text-ink-soft">
+          Salon {ROOM_STATUS[status]} · <Settings /> · {viewers} spectateur{viewers > 1 ? 's' : ''}
+        </p>
+        <p>
+          <Player
+            id={host?.id}
+            present={present}
+          />{' '}
+          contre{' '}
+          <Player
+            id={guestId}
+            present={present}
+          />
+          {score && ` — ${score.host} à ${score.guest}`}
+        </p>
+      </header>
       <div className="flex gap-2">
         {canJoin && (
           <button
-            className="border px-3 py-1"
+            className="btn"
             disabled={committing}
             onClick={() => change({ guestId: Number(userId) })}>
             Rejoindre
@@ -116,7 +129,7 @@ function RoomDetail() {
         )}
         {isPlayer && status !== 'closed' && (
           <button
-            className="border px-3 py-1"
+            className="btn"
             disabled={committing}
             onClick={() => change({ status: 'closed' })}>
             Fermer

@@ -1,36 +1,105 @@
-// Plateau 5x5 : `board` = une ligne par rangée (`b` noir, `w` blanc, `.` vide) ; cases
-// "LxC". Les cases jouables (legal_moves) sont proposées pour la couleur choisie ; le
-// dernier pion posé (last_move) est marqué.
-const PIECES = { b: 'bg-black', w: 'bg-white border border-gray-500' };
+// Plateau de la boîte : une surface de papier, un coin arrondi (en bas à gauche), les
+// 25 positions marquées d'un point ; les pions se posent sur les points.
+// `board` = une ligne par rangée (`b` noir, `w` blanc, `.` vide) ; positions "LxC".
+// Positions jouables (legal_moves) pour la couleur choisie ; pions verts sur les
+// positions où plus rien n'est jouable ; dernier pion posé (last_move) marqué.
+// `squares` : carrés 2x2 à entourer ({ coord: case en haut à gauche, flash }) — celui
+// d'une carte survolée, ou ceux qu'un coup vient de réaliser (qui s'effacent).
+const STEP = 20;
+const at = (i) => 10 + i * STEP;
+const PIECES = { b: 'fill-ink', w: 'fill-pearl' };
 
-export default function Board({ board, legalMoves, blockedCoords, lastMove, color, onPlay }) {
+export default function Board({
+  board,
+  legalMoves,
+  blockedCoords,
+  lastMove,
+  squares = [],
+  color,
+  onPlay,
+}) {
   const rows = board.split('/');
   return (
-    <div className="grid grid-cols-5 gap-1 aspect-square w-full bg-amber-100 p-1">
+    <svg
+      viewBox="0 0 100 100"
+      className="w-full aspect-square select-none">
+      <path
+        d="M0 0h100v100H12A12 12 0 0 1 0 88z"
+        className="fill-paper"
+      />
       {rows.flatMap((row, r) =>
         [...row].map((cell, c) => {
           const coord = `${r + 1}x${c + 1}`;
+          const [x, y] = [at(c), at(r)];
           const playable = onPlay && legalMoves?.[coord]?.includes(color);
-          const blocked = blockedCoords?.includes(coord);
+          const blocked = cell === '.' && blockedCoords?.includes(coord);
           const last = lastMove?.coord === coord;
           return (
-            <button
+            <g
               key={coord}
-              type="button"
-              disabled={!playable}
-              onClick={() => onPlay(coord)}
-              className={`flex items-center justify-center ${playable ? 'bg-amber-200' : ''}`}>
-              {cell !== '.' && (
-                <span
-                  data-last={last || undefined}
-                  className={`size-4/5 rounded-full ${PIECES[cell]} ${last ? 'ring-3 ring-red-600' : ''}`}
+              data-coord={coord}
+              data-playable={playable || undefined}
+              onClick={playable ? () => onPlay(coord) : undefined}
+              className={playable ? 'cursor-pointer' : undefined}>
+              <circle
+                cx={x}
+                cy={y}
+                r="0.9"
+                className="fill-ink"
+              />
+              {playable && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="6.5"
+                  className={`${PIECES[color === 'black' ? 'b' : 'w']} opacity-0 hover:opacity-40 active:opacity-60`}
                 />
               )}
-              {blocked && <span className="size-1/3 rounded-full bg-green-600" />}
-            </button>
+              {blocked && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="6.5"
+                  className="fill-green"
+                />
+              )}
+              {cell !== '.' && (
+                <circle
+                  data-last={last || undefined}
+                  cx={x}
+                  cy={y}
+                  r="6.5"
+                  className={PIECES[cell]}
+                />
+              )}
+              {last && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="2"
+                  className={cell === 'b' ? 'fill-pearl' : 'fill-ink'}
+                />
+              )}
+            </g>
           );
         })
       )}
-    </div>
+      {squares.map(({ coord, flash }) => {
+        const [r, c] = coord.split('x').map((n) => Number(n) - 1);
+        return (
+          <rect
+            key={`${coord}-${flash ? 'flash' : 'focus'}`}
+            data-square={coord}
+            x={at(c) - 9.5}
+            y={at(r) - 9.5}
+            width={STEP + 19}
+            height={STEP + 19}
+            rx="9.5"
+            className={`fill-none stroke-ink pointer-events-none ${flash ? 'square-flash' : ''}`}
+            strokeWidth="1.2"
+          />
+        );
+      })}
+    </svg>
   );
 }

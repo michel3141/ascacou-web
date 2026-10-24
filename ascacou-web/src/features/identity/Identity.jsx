@@ -15,12 +15,12 @@ export default function Identity() {
         createIdentity({ name });
       }}>
       <input
-        className="flex-1 border px-2 py-1"
+        className="flex-1 border border-ink rounded-lg px-2 py-1"
         value={name}
         onChange={(event) => setName(event.target.value)}
         placeholder="Pseudo"
       />
-      <button className="border px-3 py-1">Jouer</button>
+      <button className="btn">Jouer</button>
     </form>
   );
 }

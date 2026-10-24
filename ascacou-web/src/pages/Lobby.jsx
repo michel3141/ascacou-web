@@ -84,7 +84,7 @@ function OpenRoom() {
         />
         Pion imposé
       </label>
-      <button className="border px-3 py-1">Ouvrir un salon</button>
+      <button className="btn">Ouvrir un salon</button>
       {error && <p className="text-red-700">{error}</p>}
     </form>
   );
@@ -97,7 +97,7 @@ export default function Lobby() {
     <>
       <Identity />
       {userId && <OpenRoom />}
-      <h2 className="text-xl">Salons</h2>
+      <h2 className="title text-lg">Salons</h2>
       <ul>
         <RoomIndex />
       </ul>
