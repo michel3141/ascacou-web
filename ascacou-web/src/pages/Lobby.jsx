@@ -4,7 +4,7 @@ import { useChannel } from '../cable';
 import Identity from '../features/identity/Identity';
 import { useUserId } from '../features/identity';
 import { useRoomsActions } from '../features/rooms';
-import { RoomIndex } from '../resources/Room';
+import { RoomList } from '../resources/Room';
 
 const lobby = { channel: 'LobbyChannel' };
 
@@ -16,7 +16,13 @@ const DEALS = {
   draft: 'Pioche',
 };
 
-// Ouverture d'un salon : visibilité, distribution des cartes, variantes.
+const VISIBILITIES = {
+  public: ['Public', "listé à l'accueil"],
+  private: ['Privé', 'par son lien'],
+};
+
+// Nouveau salon, dans un encadré comme ceux du livret : visibilité, distribution des
+// cartes, variantes.
 function OpenRoom() {
   const { openRoom } = useRoomsActions();
   const navigate = useNavigate();
@@ -27,11 +33,7 @@ function OpenRoom() {
     imposedColor: false,
   });
   const [error, setError] = useState(null);
-  const set = (key) => (event) =>
-    setSettings({
-      ...settings,
-      [key]: event.target.type === 'checkbox' ? event.target.checked : event.target.value,
-    });
+  const set = (key, value) => setSettings({ ...settings, [key]: value });
   const open = async (event) => {
     event.preventDefault();
     try {
@@ -43,22 +45,28 @@ function OpenRoom() {
   };
   return (
     <form
-      className="flex flex-col gap-2"
+      className="flex flex-col gap-3 border border-ink rounded-xl p-3 bg-pearl/60"
       onSubmit={open}>
-      <label className="flex gap-2">
-        Salon
-        <select
-          value={settings.visibility}
-          onChange={set('visibility')}>
-          <option value="public">public</option>
-          <option value="private">privé (par lien)</option>
-        </select>
-      </label>
-      <label className="flex gap-2">
+      <h2 className="title">Nouveau salon</h2>
+      <div className="grid grid-cols-2 gap-2">
+        {Object.entries(VISIBILITIES).map(([value, [label, hint]]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={settings.visibility === value}
+            className={`btn flex flex-col items-start ${settings.visibility === value ? 'btn-on' : ''}`}
+            onClick={() => set('visibility', value)}>
+            {label}
+            <span className="text-xs text-ink-soft">{hint}</span>
+          </button>
+        ))}
+      </div>
+      <label className="flex items-center gap-2">
         Cartes
         <select
+          className="flex-1 border border-ink-faint rounded-lg px-2 py-1 bg-white"
           value={settings.dealMethod}
-          onChange={set('dealMethod')}>
+          onChange={(event) => set('dealMethod', event.target.value)}>
           {Object.entries(DEALS).map(([value, label]) => (
             <option
               key={value}
@@ -68,39 +76,83 @@ function OpenRoom() {
           ))}
         </select>
       </label>
-      <label className="flex gap-2">
-        <input
-          type="checkbox"
-          checked={settings.allowMultiple}
-          onChange={set('allowMultiple')}
-        />
-        Motif multiple
-      </label>
-      <label className="flex gap-2">
-        <input
-          type="checkbox"
-          checked={settings.imposedColor}
-          onChange={set('imposedColor')}
-        />
-        Pion imposé
-      </label>
-      <button className="btn">Ouvrir un salon</button>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={settings.allowMultiple}
+            onChange={(event) => set('allowMultiple', event.target.checked)}
+          />
+          Motif multiple
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={settings.imposedColor}
+            onChange={(event) => set('imposedColor', event.target.checked)}
+          />
+          Pion imposé
+        </label>
+      </div>
+      <button className="btn btn-primary self-end px-6">Ouvrir</button>
       {error && <p className="text-red-700">{error}</p>}
     </form>
+  );
+}
+
+// Une liste de salons sous un titre ; une liste vide disparaît, ou affiche `empty`.
+function Section({ title, empty, children }) {
+  return (
+    <section className={`room-list flex flex-col gap-1 ${empty ? '' : 'optional'}`}>
+      <h2 className="title text-sm">{title}</h2>
+      <ul>{children}</ul>
+      {empty && <p className="empty text-sm text-ink-soft">{empty}</p>}
+    </section>
   );
 }
 
 export default function Lobby() {
   useChannel(lobby);
   const userId = useUserId();
+  // key : les listes dépendent du jeton, rechargées quand le joueur est créé.
   return (
     <>
       <Identity />
+      {userId && (
+        <Section title="Vos salons">
+          <RoomList
+            key={`mine-${userId}`}
+            where={{ player: 'me', status: ['waiting', 'playing'] }}
+          />
+        </Section>
+      )}
       {userId && <OpenRoom />}
-      <h2 className="title text-lg">Salons</h2>
-      <ul>
-        <RoomIndex />
-      </ul>
+      <Section
+        title="À rejoindre"
+        empty="Aucun salon public n'attend d'adversaire : ouvrez-en un !">
+        <RoomList
+          key={`waiting-${userId}`}
+          where={{ status: 'waiting', visibility: 'public' }}
+          hideMine
+        />
+      </Section>
+      <Section title="En cours">
+        <RoomList
+          key={`playing-${userId}`}
+          where={{ status: 'playing' }}
+          hideMine
+        />
+      </Section>
+      {userId && (
+        <Section title="Vos salons terminés">
+          <RoomList
+            key={`closed-${userId}`}
+            where={{ player: 'me', status: 'closed' }}
+            per={5}
+            variant="closed"
+          />
+        </Section>
+      )}
     </>
   );
 }

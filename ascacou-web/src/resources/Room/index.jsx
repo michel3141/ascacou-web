@@ -18,8 +18,13 @@ export const useRoomMeta = () => use(roomContext).meta;
 
 export const roomScope = createScope(client, { endpoint: '/rooms', method: 'all' });
 
-function RoomRow() {
-  const { id, codeLabel, visibility, status } = useRoom();
+// Ligne d'un salon dans une liste de l'accueil : son code (lien), puis ses joueurs (en
+// cours) ou son hôte et ses réglages (en attente). hideMine : dans les listes générales,
+// ses propres salons sont déjà dans « Vos salons ».
+function RoomRow({ hideMine }) {
+  const { id, codeLabel, visibility, status, host, guestId } = useRoom();
+  const userId = useUserId();
+  if (hideMine && userId && [host?.id, guestId].map(String).includes(userId)) return null;
   return (
     <li className="flex justify-between gap-2 py-1 border-b border-paper-dark">
       <Link
@@ -27,8 +32,17 @@ function RoomRow() {
         className="underline-offset-4 hover:underline">
         {codeLabel}
       </Link>
-      <span className="text-ink-soft text-sm">
-        {VISIBILITY[visibility]}, {ROOM_STATUS[status]}
+      <span className="text-ink-soft text-sm text-right">
+        {status === 'playing' && guestId ? (
+          <>
+            {host && <UserShow id={host.id} />} contre <UserShow id={guestId} />
+          </>
+        ) : (
+          <>
+            {host && <UserShow id={host.id} />} · <Settings />
+            {visibility === 'private' && ` · ${VISIBILITY.private}`}
+          </>
+        )}
       </span>
     </li>
   );
@@ -164,21 +178,41 @@ function RoomDetail() {
   );
 }
 
-const variants = { row: RoomRow, detail: RoomDetail };
+// Salon terminé : les joueurs et le score final, sans lien (rien à y faire, tant qu'on
+// ne peut pas revoir les parties).
+function ClosedRoomRow() {
+  const { host, guestId, score } = useRoom();
+  if (!guestId) return null; // fermé sans adversaire : pas de score à montrer
+  return (
+    <li className="flex justify-between gap-2 py-1 border-b border-paper-dark text-sm text-ink-soft">
+      <span>
+        {host && <UserShow id={host.id} />} {score?.host ?? 0} – {score?.guest ?? 0}{' '}
+        {guestId ? <UserShow id={guestId} /> : '—'}
+      </span>
+    </li>
+  );
+}
 
-const RoomController = ({ deleted, variant = 'row' }) => {
+const variants = { row: RoomRow, closed: ClosedRoomRow, detail: RoomDetail };
+
+const RoomController = ({ deleted, variant = 'row', hideMine }) => {
   const View = variants[variant];
-  return deleted ? null : <View />;
+  return deleted ? null : <View hideMine={hideMine} />;
 };
 
 export const Room = Watch(client, RoomController, roomContext);
 
-// Salons listés : publics, et en cours (pour les spectateurs).
-export const RoomIndex = (props) => (
+const refreshOnRooms = (action, { type }) => action === 'create' && type === 'rooms';
+
+// Une liste de salons (accueil) : `where` filtre (status, visibility, player: 'me') ;
+// tri par défaut du serveur, du plus récent au plus ancien. hideMine : sans les siens
+// (déjà dans « Vos salons ») ; variant="closed" : salons terminés, en lecture seule.
+export const RoomList = ({ where, per, ...props }) => (
   <Index
     scope={roomScope}
     Obs={Room}
-    shouldRefresh={(action, { type }) => action === 'create' && type === 'rooms'}
+    request={{ includes: ['host'], where, ...(per ? { per } : {}) }}
+    shouldRefresh={refreshOnRooms}
     {...props}
   />
 );

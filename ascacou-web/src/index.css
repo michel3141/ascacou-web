@@ -34,3 +34,12 @@ button:not(:disabled),
 summary {
   cursor: pointer;
 }
+
+/* Listes de salons de l'accueil : vide, une liste facultative disparaît ; sinon elle
+   affiche son message. */
+.room-list.optional:not(:has(li)) {
+  display: none;
+}
+.room-list:has(li) .empty {
+  display: none;
+}

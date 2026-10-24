@@ -18,6 +18,8 @@ export default defineConfig({
   shortcuts: {
     // Encadrés du livret : bord fin à l'encre, coins arrondis.
     btn: 'border border-ink rounded-lg px-3 py-1 bg-white text-ink active:bg-paper disabled:opacity-40',
+    // Action principale de l'écran : blanc sur encre.
+    'btn-primary': 'bg-ink text-pearl active:bg-ink-soft',
     // Choix en cours : le bouton reste noir sur blanc, entouré de gris.
     'btn-on': 'outline-3 outline-ink-faint outline-offset-1',
     title: 'uppercase font-black tracking-wide',
