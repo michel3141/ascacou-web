@@ -169,6 +169,7 @@ function GameView({ me, hostId, guestId, roomCode, opponentAbsent, imposedColor 
           board={game.board}
           legalMoves={game.legalMoves}
           blockedCoords={game.blockedCoords}
+          lastMove={game.lastMove}
           color={current}
           onPlay={
             playing && myTurn && !choosingOpening && !game.takebackRequested ? play : undefined
