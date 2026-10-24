@@ -3,11 +3,13 @@ import { createSelectorHooks } from '@lpr/rtk/react';
 import { RECEIVED_EVENT, perform } from '../../cable';
 
 // État d'un salon tenu par le RoomChannel seul (rien n'est rechargé par l'API) :
-// joueurs présents, nombre de spectateurs, partie en cours.
+// joueurs présents, nombre de spectateurs, partie en cours, derniers messages
+// prédéfinis (éphémères : le serveur ne les stocke pas).
 const name = 'roomChannel';
 const { createReducer, createSelectors } = rtk(name);
 
-const emptyRoom = { present: [], viewers: 0, gameId: null };
+const emptyRoom = { present: [], viewers: 0, gameId: null, messages: [] };
+const KEPT_MESSAGES = 3;
 
 const reducer = createReducer(
   {},
@@ -32,6 +34,11 @@ const reducer = createReducer(
         }
         case 'viewers':
           room.viewers = message.count;
+          break;
+        case 'message':
+          room.messages ??= [];
+          room.messages.push({ userId: String(message.user_id), code: message.message });
+          room.messages = room.messages.slice(-KEPT_MESSAGES);
           break;
       }
     },

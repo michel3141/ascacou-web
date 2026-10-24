@@ -4,6 +4,8 @@ import { Index, Show, Watch, createScope } from '@lpr/redux-documents/react';
 import { client } from '../../api';
 import { useUserId } from '../../features/identity';
 import { useRoomChannel } from '../../features/roomChannel';
+import { useCableActions } from '../../cable';
+import { MESSAGES } from '../../features/messages';
 import { describe } from '../../features/refusals';
 import { GameShow } from '../Game';
 import { UserShow } from '../User';
@@ -35,11 +37,52 @@ function Player({ id, present }) {
   );
 }
 
+const DEALS = {
+  random: 'distribution au hasard',
+  inverse: 'jeux inversés',
+  fifty: 'autant de noirs que de blancs',
+  max: 'maximum de noirs / de blancs',
+  draft: 'pioche',
+};
+
+function Settings() {
+  const { dealMethod, allowMultiple, imposedColor } = useRoom();
+  const variants = [allowMultiple && 'motif multiple', imposedColor && 'pion imposé'];
+  return <p>{[DEALS[dealMethod], ...variants].filter(Boolean).join(', ')}</p>;
+}
+
+// Messages prédéfinis : les derniers reçus, et les boutons pour les joueurs.
+function Messages({ code, isPlayer, messages }) {
+  const { perform } = useCableActions();
+  const say = (message) => perform({ channel: 'RoomChannel', code }, 'say', { message });
+  return (
+    <div className="flex flex-col gap-1">
+      {messages.map(({ userId, code: message }, i) => (
+        <p key={i}>
+          <UserShow id={userId} /> : {MESSAGES[message]}
+        </p>
+      ))}
+      {isPlayer && (
+        <div className="flex flex-wrap gap-1">
+          {Object.entries(MESSAGES).map(([message, text]) => (
+            <button
+              key={message}
+              className="border px-2 py-0.5 text-sm"
+              onClick={() => say(message)}>
+              {text}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RoomDetail() {
-  const { id, codeLabel, status, host, guestId, score, errors } = useRoom();
+  const { id, codeLabel, status, host, guestId, score, imposedColor, errors } = useRoom();
   const { modify, committing } = useRoomMeta();
   const userId = useUserId();
-  const { present, viewers, gameId } = useRoomChannel(id);
+  const { present, viewers, gameId, messages = [] } = useRoomChannel(id);
   const isPlayer = userId && [host?.id, guestId].map(String).includes(userId);
   const canJoin = userId && status === 'waiting' && !isPlayer;
   // Écriture immédiate : une transition, envoyée tout de suite.
@@ -48,6 +91,7 @@ function RoomDetail() {
     <section className="flex flex-col gap-2">
       <h2 className="text-xl">{codeLabel}</h2>
       <p>Statut : {status}</p>
+      <Settings />
       <p>
         <Player
           id={host?.id}
@@ -86,6 +130,11 @@ function RoomDetail() {
           {describe(error).message}
         </p>
       ))}
+      <Messages
+        code={id}
+        isPlayer={isPlayer && status !== 'closed'}
+        messages={messages}
+      />
       {gameId && (
         <GameShow
           id={gameId}
@@ -93,6 +142,7 @@ function RoomDetail() {
           hostId={String(host?.id)}
           guestId={guestId && String(guestId)}
           roomCode={id}
+          imposedColor={imposedColor}
           opponentAbsent={[host?.id, guestId].some(
             (p) => p && String(p) !== userId && !present.includes(String(p))
           )}

@@ -90,23 +90,49 @@ function Draft({ game, myTurn, mine, theirs, onError }) {
   );
 }
 
-function GameView({ me, hostId, guestId, roomCode, opponentAbsent }) {
+function ColorChoice({ label, colors, value, onChange }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span>{label} :</span>
+      {colors.map((c) => (
+        <button
+          key={c}
+          className={`border px-3 py-1 ${c === value ? 'border-2 border-black' : ''}`}
+          onClick={() => onChange(c)}>
+          {COLORS[c]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function GameView({ me, hostId, guestId, roomCode, opponentAbsent, imposedColor }) {
   const game = useGame();
   const { modify } = useGameMeta();
-  const { playMove, nextGame } = useGameActions();
+  const { playMove, acceptTakeback, nextGame } = useGameActions();
   const [color, setColor] = useState('black');
+  const [nextColor, setNextColor] = useState('black');
   const [error, setError] = useState(null);
   const { mine, theirs } = roles({ me, hostId, guestId });
   const myTurn = Boolean(mine) && String(game.currentPlayerId) === me;
+  const opponentId = mine === 'host' ? guestId : hostId;
   const onError = (e) => setError(e.message);
   const playing = game.status === 'playing';
   const allowed = game.requiredColor ? [game.requiredColor] : Object.keys(COLORS);
   const current = allowed.includes(color) ? color : allowed[0];
   const rank = game.board.replace(/[^bw]/g, '').length + 1;
+  const choosingOpening = playing && game.awaitingOpeningColor;
 
   const play = (coord) => {
     setError(null);
-    playMove({ gameId: game.id, rank, coord, color: current }).unwrap().catch(onError);
+    const imposed = imposedColor ? { nextColor } : {};
+    playMove({ gameId: game.id, rank, coord, color: current, ...imposed })
+      .unwrap()
+      .catch(onError);
+  };
+  const accept = () => {
+    setError(null);
+    acceptTakeback({ gameId: game.id }).unwrap().catch(onError);
   };
   const change = (changes) => {
     setError(null);
@@ -144,7 +170,9 @@ function GameView({ me, hostId, guestId, roomCode, opponentAbsent }) {
           legalMoves={game.legalMoves}
           blockedCoords={game.blockedCoords}
           color={current}
-          onPlay={playing && myTurn ? play : undefined}
+          onPlay={
+            playing && myTurn && !choosingOpening && !game.takebackRequested ? play : undefined
+          }
         />
       )}
       <Hand
@@ -154,17 +182,68 @@ function GameView({ me, hostId, guestId, roomCode, opponentAbsent }) {
         realized={game.realizedPatterns}
       />
       {playing && <p>{myTurn ? 'À vous de jouer.' : mine ? "À l'adversaire de jouer." : ''}</p>}
-      {playing && myTurn && (
-        <div className="flex gap-2">
-          {allowed.map((c) => (
+      {choosingOpening && myTurn && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span>Couleur du premier pion :</span>
+          {Object.entries(COLORS).map(([c, label]) => (
             <button
               key={c}
-              className={`border px-3 py-1 ${c === current ? 'border-2 border-black' : ''}`}
-              onClick={() => setColor(c)}>
-              {COLORS[c]}
+              className="border px-3 py-1"
+              onClick={() => change({ openingColor: c })}>
+              {label}
             </button>
           ))}
         </div>
+      )}
+      {playing && myTurn && !choosingOpening && (
+        <ColorChoice
+          label="Votre pion"
+          colors={allowed}
+          value={current}
+          onChange={setColor}
+        />
+      )}
+      {playing && myTurn && !choosingOpening && imposedColor && (
+        <ColorChoice
+          label="Imposé à l'adversaire"
+          colors={Object.keys(COLORS)}
+          value={nextColor}
+          onChange={setNextColor}
+        />
+      )}
+      {playing &&
+        myTurn &&
+        rank === 1 &&
+        game.firstPlayerId &&
+        String(game.firstPlayerId) === me && (
+          <button
+            className="border px-3 py-1"
+            onClick={() => change({ firstPlayerId: Number(opponentId) })}>
+            Laisser commencer l'adversaire
+          </button>
+        )}
+      {playing && mine && game.takebackRequested && !myTurn && <p>Annulation demandée.</p>}
+      {playing && mine && game.takebackRequested && myTurn && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span>L'adversaire demande à annuler son coup.</span>
+          <button
+            className="border px-3 py-1"
+            onClick={accept}>
+            Accepter
+          </button>
+          <button
+            className="border px-3 py-1"
+            onClick={() => change({ takebackRequested: false })}>
+            Refuser
+          </button>
+        </div>
+      )}
+      {playing && mine && !myTurn && rank > 1 && !game.takebackRequested && (
+        <button
+          className="border px-3 py-1"
+          onClick={() => change({ takebackRequested: true })}>
+          Annuler mon coup
+        </button>
       )}
       {mine && game.status !== 'finished' && (
         <div className="flex gap-2">
