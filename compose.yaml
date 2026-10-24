@@ -7,7 +7,7 @@ services:
     environment:
       LANG: fr_FR.UTF-8
     volumes:
-      - ./ascacou-app:/workspace
+      - ./ascacou-web:/workspace
     stdin_open: true
     tty: true
 
