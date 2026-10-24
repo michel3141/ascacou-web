@@ -9,6 +9,12 @@ const STEP = 20;
 const at = (i) => 10 + i * STEP;
 const PIECES = { b: 'fill-ink', w: 'fill-pearl' };
 
+// Contour d'un carré 2x2, de la forme d'une carte : droit, un coin arrondi en bas à gauche.
+const SIDE = STEP + 19;
+const RADIUS = 9.5;
+const cardOutline = (x, y) =>
+  `M${x} ${y}h${SIDE}v${SIDE}H${x + RADIUS}A${RADIUS} ${RADIUS} 0 0 1 ${x} ${y + SIDE - RADIUS}z`;
+
 export default function Board({
   board,
   legalMoves,
@@ -87,14 +93,10 @@ export default function Board({
       {squares.map(({ coord, flash }) => {
         const [r, c] = coord.split('x').map((n) => Number(n) - 1);
         return (
-          <rect
+          <path
             key={`${coord}-${flash ? 'flash' : 'focus'}`}
             data-square={coord}
-            x={at(c) - 9.5}
-            y={at(r) - 9.5}
-            width={STEP + 19}
-            height={STEP + 19}
-            rx="9.5"
+            d={cardOutline(at(c) - 9.5, at(r) - 9.5)}
             className={`fill-none stroke-ink pointer-events-none ${flash ? 'square-flash' : ''}`}
             strokeWidth="1.2"
           />
