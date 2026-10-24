@@ -3,6 +3,9 @@ import { Show, Watch, createScope } from '@lpr/redux-documents/react';
 import { client } from '../../api';
 import { useGameActions } from '../../features/game';
 import { describe } from '../../features/refusals';
+import { MESSAGES } from '../../features/messages';
+import { BarAction, ConfirmAction, FlagIcon, TopBarActions, UndoIcon } from '../../TopBar';
+import { UserShow } from '../User';
 import Board from './Board';
 import Card from './Card';
 
@@ -22,35 +25,63 @@ function roles({ me, hostId, guestId }) {
   return {};
 }
 
-const handLabel = (hand, mine) =>
-  hand === mine
-    ? 'Votre jeu'
-    : mine
-      ? 'Jeu adverse'
-      : hand === 'host'
-        ? "Jeu de l'hôte"
-        : "Jeu de l'invité";
+// Message prédéfini reçu, affiché quelques secondes près du nom de son auteur (sans
+// déplacer le plateau).
+const BUBBLE_MS = 4000;
 
-function Hand({ label, cards, score, realized, flashing, onFocus }) {
+function Bubble({ message }) {
+  const [visible, setVisible] = useState(() => Date.now() - message.at < BUBBLE_MS);
+  useEffect(() => {
+    const left = BUBBLE_MS - (Date.now() - message.at);
+    if (left <= 0) return undefined;
+    const timer = setTimeout(() => setVisible(false), left);
+    return () => clearTimeout(timer);
+  }, [message.at]);
+  if (!visible) return null;
   return (
-    <div className="flex flex-col gap-1">
-      <p className="flex justify-between">
-        <span className="title text-sm">{label}</span>
-        <span>
-          {score ?? 0} motif{score > 1 ? 's' : ''}
-        </span>
-      </p>
-      <div className="grid grid-cols-8 gap-1">
-        {cards.map((card) => (
-          <Card
-            key={card}
-            value={card}
-            realized={realized?.includes(card)}
-            flash={flashing?.includes(card)}
-            onFocus={realized?.includes(card) ? onFocus : undefined}
-          />
-        ))}
-      </div>
+    <span className="rounded-lg bg-pearl border border-ink-faint px-2 text-sm">
+      {MESSAGES[message.code]}
+    </span>
+  );
+}
+
+// Bandeau d'un joueur, au-dessus ou au-dessous du plateau (comme les pendules de
+// lichess) : son nom, en encre pleine quand c'est à lui d'agir ; absent ; ses motifs.
+function PlayerStrip({ id, mine, active, present, score, message }) {
+  return (
+    <div
+      data-active={active || undefined}
+      className="flex items-center gap-2 min-h-7">
+      <span className={`rounded-md px-2 py-0.5 ${active ? 'bg-ink text-pearl' : 'text-ink-soft'}`}>
+        {id ? <UserShow id={id} /> : '—'}
+        {mine && ' (vous)'}
+      </span>
+      {id && !present && <span className="text-sm text-ink-faint">absent</span>}
+      {message && (
+        <Bubble
+          key={message.at}
+          message={message}
+        />
+      )}
+      <span className="ml-auto text-sm">
+        {score ?? 0} motif{score > 1 ? 's' : ''}
+      </span>
+    </div>
+  );
+}
+
+function Hand({ cards, realized, flashing, onFocus }) {
+  return (
+    <div className="grid grid-cols-8 gap-1">
+      {cards.map((card) => (
+        <Card
+          key={card}
+          value={card}
+          realized={realized?.includes(card)}
+          flash={flashing?.includes(card)}
+          onFocus={realized?.includes(card) ? onFocus : undefined}
+        />
+      ))}
     </div>
   );
 }
@@ -118,23 +149,39 @@ function useFlash(squares) {
   return flashed;
 }
 
-function ColorChoice({ label, colors, value, onChange }) {
+// Choix d'une couleur par des pions, comme sur le plateau ; le choix en cours est
+// entouré de gris. Sans onChange : grisé (c'est à l'adversaire de choisir).
+function PawnChoice({ label, colors, value, onChange }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span>{label} :</span>
+    <div className={`flex items-center gap-3 ${onChange ? '' : 'opacity-30'}`}>
+      <span className="text-sm text-ink-soft">{label}</span>
       {colors.map((c) => (
         <button
           key={c}
-          className={`btn ${c === value ? 'btn-on' : ''}`}
-          onClick={() => onChange(c)}>
-          {COLORS[c]}
+          type="button"
+          aria-label={COLORS[c]}
+          aria-pressed={c === value}
+          disabled={!onChange}
+          onClick={() => onChange(c)}
+          className={`size-9 rounded-full ${c === value ? 'outline-3 outline-ink-faint outline-offset-2' : ''}`}>
+          <svg
+            viewBox="0 0 20 20"
+            className="size-full">
+            <circle
+              cx="10"
+              cy="10"
+              r="9"
+              className={c === 'black' ? 'fill-ink' : 'fill-pearl stroke-ink-faint'}
+              strokeWidth="0.5"
+            />
+          </svg>
         </button>
       ))}
     </div>
   );
 }
 
-function GameView({ me, hostId, guestId, roomCode, opponentAbsent, imposedColor }) {
+function GameView({ me, hostId, guestId, roomCode, present = [], messages = [], imposedColor }) {
   const game = useGame();
   const { modify } = useGameMeta();
   const { playMove, acceptTakeback, nextGame } = useGameActions();
@@ -161,16 +208,33 @@ function GameView({ me, hostId, guestId, roomCode, opponentAbsent, imposedColor 
     ...squares.filter(({ pattern }) => pattern === focused),
     ...flashed.map((square) => ({ ...square, flash: true })),
   ];
+  const ids = { host: hostId, guest: guestId };
+  const opponentAbsent = Boolean(mine) && !present.includes(ids[theirs]);
+  const lastMessage = (id) => messages.findLast((m) => m.userId === id);
   const hand = (role) => (
     <Hand
-      label={handLabel(role, mine)}
       cards={role === 'host' ? game.hostHand : game.guestHand}
-      score={game.score?.[role]}
       realized={realized}
       flashing={flashed.map(({ pattern }) => pattern)}
       onFocus={setFocused}
     />
   );
+  const strip = (role) => (
+    <PlayerStrip
+      id={ids[role]}
+      mine={role === mine}
+      active={game.status !== 'finished' && String(game.currentPlayerId) === ids[role]}
+      present={present.includes(ids[role])}
+      score={game.score?.[role]}
+      message={lastMessage(ids[role])}
+    />
+  );
+  const winner =
+    game.result === 'draw' ? null : game.result === mine ? (
+      'vous'
+    ) : (
+      <UserShow id={ids[game.result]} />
+    );
 
   const play = (coord) => {
     setError(null);
@@ -192,14 +256,98 @@ function GameView({ me, hostId, guestId, roomCode, opponentAbsent, imposedColor 
     nextGame({ roomCode }).unwrap().catch(onError);
   };
 
+  // Contre le plateau, du côté du joueur qui doit agir : le choix de couleur (actif pour
+  // soi, grisé pour l'adversaire), la réponse à une demande d'annulation, le résultat.
+  // Les deux emplacements gardent leur hauteur : le plateau ne bouge pas.
+  const activeRole = [top, bottom].find((role) => String(game.currentPlayerId) === ids[role]);
+  const slot = (role) => {
+    if (game.status === 'finished')
+      return role === bottom ? (
+        <>
+          <p className="title">
+            Partie {game.number} : {winner ? <>gagnée par {winner}</> : 'nulle'}
+          </p>
+          {mine && (
+            <button
+              className="btn"
+              onClick={next}>
+              Partie suivante
+            </button>
+          )}
+        </>
+      ) : null;
+    if (!playing || role !== activeRole) return null;
+    const acting = role === mine;
+    if (game.takebackRequested)
+      return acting ? (
+        <>
+          <span className="text-sm">Annuler son coup ?</span>
+          <button
+            className="btn"
+            onClick={accept}>
+            Accepter
+          </button>
+          <button
+            className="btn"
+            onClick={() => change({ takebackRequested: false })}>
+            Refuser
+          </button>
+        </>
+      ) : (
+        <span className="text-sm text-ink-soft">Annulation demandée…</span>
+      );
+    if (choosingOpening)
+      return (
+        <PawnChoice
+          label="Premier pion"
+          colors={Object.keys(COLORS)}
+          onChange={acting ? (c) => change({ openingColor: c }) : undefined}
+        />
+      );
+    return (
+      <>
+        <PawnChoice
+          label={acting ? 'Votre pion' : 'Son pion'}
+          colors={allowed}
+          value={acting ? current : undefined}
+          onChange={acting ? setColor : undefined}
+        />
+        {acting && imposedColor && (
+          <PawnChoice
+            label="Imposé"
+            colors={Object.keys(COLORS)}
+            value={nextColor}
+            onChange={setNextColor}
+          />
+        )}
+      </>
+    );
+  };
+  const slotRow = (role) => (
+    <div className="h-11 flex items-center justify-center gap-6">{slot(role)}</div>
+  );
+
   return (
-    <section className="flex flex-col gap-3">
-      <h3 className="title">
-        Partie {game.number}
-        {game.status === 'finished' &&
-          ` — ${game.result === 'draw' ? 'nulle' : `gagnée par ${game.result === mine ? 'vous' : game.result === 'host' ? "l'hôte" : "l'invité"}`}`}
-      </h3>
+    <section className="flex flex-col gap-2">
+      {mine && game.status !== 'finished' && (
+        <TopBarActions>
+          <BarAction
+            icon={<UndoIcon />}
+            label={game.takebackRequested ? 'Annulation demandée' : 'Annuler mon coup'}
+            disabled={!playing || myTurn || rank === 1 || game.takebackRequested}
+            onClick={() => change({ takebackRequested: true })}
+          />
+          <ConfirmAction
+            icon={<FlagIcon />}
+            label="Abandonner la partie"
+            question="Abandonner ?"
+            onConfirm={() => change({ result: theirs })}
+          />
+        </TopBarActions>
+      )}
+      {strip(top)}
       {hand(top)}
+      {slotRow(top)}
       {game.status === 'drafting' ? (
         <Draft
           game={game}
@@ -221,94 +369,26 @@ function GameView({ me, hostId, guestId, roomCode, opponentAbsent, imposedColor 
           }
         />
       )}
+      {slotRow(bottom)}
       {hand(bottom)}
-      {playing && <p>{myTurn ? 'À vous de jouer.' : mine ? "À l'adversaire de jouer." : ''}</p>}
-      {choosingOpening && myTurn && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span>Couleur du premier pion :</span>
-          {Object.entries(COLORS).map(([c, label]) => (
-            <button
-              key={c}
-              className="btn"
-              onClick={() => change({ openingColor: c })}>
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-      {playing && myTurn && !choosingOpening && (
-        <ColorChoice
-          label="Votre pion"
-          colors={allowed}
-          value={current}
-          onChange={setColor}
-        />
-      )}
-      {playing && myTurn && !choosingOpening && imposedColor && (
-        <ColorChoice
-          label="Imposé à l'adversaire"
-          colors={Object.keys(COLORS)}
-          value={nextColor}
-          onChange={setNextColor}
-        />
-      )}
-      {playing &&
-        myTurn &&
-        rank === 1 &&
-        game.firstPlayerId &&
-        String(game.firstPlayerId) === me && (
+      {strip(bottom)}
+      {/* Actions secondaires et erreurs : sous son jeu, sans déplacer le plateau. */}
+      <div className="flex flex-wrap gap-x-4 text-sm text-ink-soft">
+        {playing && myTurn && rank === 1 && String(game.firstPlayerId) === me && (
           <button
-            className="btn"
+            className="underline underline-offset-4"
             onClick={() => change({ firstPlayerId: Number(opponentId) })}>
             Laisser commencer l'adversaire
           </button>
         )}
-      {playing && mine && game.takebackRequested && !myTurn && <p>Annulation demandée.</p>}
-      {playing && mine && game.takebackRequested && myTurn && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span>L'adversaire demande à annuler son coup.</span>
+        {opponentAbsent && game.status !== 'finished' && (
           <button
-            className="btn"
-            onClick={accept}>
-            Accepter
+            className="underline underline-offset-4"
+            onClick={() => change({ result: mine })}>
+            Réclamer la victoire (adversaire absent)
           </button>
-          <button
-            className="btn"
-            onClick={() => change({ takebackRequested: false })}>
-            Refuser
-          </button>
-        </div>
-      )}
-      {playing && mine && !myTurn && rank > 1 && !game.takebackRequested && (
-        <button
-          className="btn"
-          onClick={() => change({ takebackRequested: true })}>
-          Annuler mon coup
-        </button>
-      )}
-      {mine && game.status !== 'finished' && (
-        <div className="flex gap-2">
-          <button
-            className="btn"
-            onClick={() => change({ result: theirs })}>
-            Abandonner
-          </button>
-          {opponentAbsent && (
-            <button
-              className="btn"
-              onClick={() => change({ result: mine })}>
-              Réclamer la victoire
-            </button>
-          )}
-        </div>
-      )}
-      {mine && game.status === 'finished' && (
-        <button
-          className="btn"
-          onClick={next}>
-          Partie suivante
-        </button>
-      )}
+        )}
+      </div>
       {error && <p className="text-red-700">{error}</p>}
       {Object.values(game.errors ?? {}).map((e) => (
         <p

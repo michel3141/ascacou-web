@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useIdentityActions, useUserId } from '.';
 
-// Le joueur, ou le formulaire qui le crée (pseudo).
+// Formulaire qui crée le joueur (pseudo) ; rien une fois identifié (son nom est dans la
+// barre du haut).
 export default function Identity() {
   const userId = useUserId();
   const { createIdentity } = useIdentityActions();
   const [name, setName] = useState('');
-  if (userId) return <p>Joueur n° {userId}</p>;
+  if (userId) return null;
   return (
     <form
       className="flex gap-2"

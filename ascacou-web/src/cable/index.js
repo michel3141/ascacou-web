@@ -31,7 +31,7 @@ const events = createEvents({
   connected: (identifier) => ({ identifier }),
   disconnected: (identifier) => ({ identifier }),
   rejected: (identifier) => ({ identifier }),
-  received: (identifier, message) => ({ identifier, message }),
+  received: (identifier, message) => ({ identifier, message, at: Date.now() }),
 });
 
 const actions = createActions({

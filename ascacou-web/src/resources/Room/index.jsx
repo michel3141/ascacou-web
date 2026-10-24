@@ -10,6 +10,7 @@ import { describe } from '../../features/refusals';
 import { GameShow } from '../Game';
 import { UserShow } from '../User';
 import { ROOM_STATUS, VISIBILITY } from '../../features/labels';
+import { ConfirmAction, CrossIcon, TopBarActions } from '../../TopBar';
 
 const roomContext = createContext(null);
 export const useRoom = () => use(roomContext).data;
@@ -33,18 +34,6 @@ function RoomRow() {
   );
 }
 
-// Un joueur, par son id (les relations ne suivent pas la synchronisation de spraypaint,
-// les attributs si : on part de host.id, fixe, et de guest_id).
-function Player({ id, present }) {
-  if (!id) return '—';
-  return (
-    <>
-      <UserShow id={id} />
-      {!present.includes(String(id)) && ' (absent)'}
-    </>
-  );
-}
-
 const DEALS = {
   random: 'distribution au hasard',
   inverse: 'jeux inversés',
@@ -59,33 +48,35 @@ function Settings() {
   return [DEALS[dealMethod], ...variants].filter(Boolean).join(', ');
 }
 
-// Messages prédéfinis : les derniers reçus, et les boutons pour les joueurs.
+// Messages prédéfinis, en bas de page (le plateau ne bouge pas) : les boutons pour les
+// joueurs, et les derniers reçus (ils s'affichent aussi un instant près de leur auteur).
 function Messages({ code, isPlayer, messages }) {
   const { perform } = useCableActions();
   const say = (message) => perform({ channel: 'RoomChannel', code }, 'say', { message });
+  if (!isPlayer && !messages.length) return null;
   return (
-    <div className="flex flex-col gap-1">
-      {messages.map(({ userId, code: message }, i) => (
-        <p key={i}>
-          <UserShow id={userId} /> : {MESSAGES[message]}
-        </p>
-      ))}
-      {isPlayer && (
-        <details>
-          <summary className="cursor-pointer text-sm text-ink-soft">Messages</summary>
-          <div className="flex flex-wrap gap-1 pt-1">
+    <details className="text-sm">
+      <summary className="cursor-pointer text-ink-soft">Messages</summary>
+      <div className="flex flex-col gap-2 pt-2">
+        {isPlayer && (
+          <div className="flex flex-wrap gap-1">
             {Object.entries(MESSAGES).map(([message, text]) => (
               <button
                 key={message}
-                className="btn text-sm px-2 py-0.5"
+                className="btn px-2 py-0.5"
                 onClick={() => say(message)}>
                 {text}
               </button>
             ))}
           </div>
-        </details>
-      )}
-    </div>
+        )}
+        {messages.map(({ userId, code: message, at }) => (
+          <p key={at}>
+            <UserShow id={userId} /> : {MESSAGES[message]}
+          </p>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -99,43 +90,52 @@ function RoomDetail() {
   // Écriture immédiate : une transition, envoyée tout de suite.
   const change = (changes) => modify(changes, { delay: 0 });
   return (
-    <section className="flex flex-col gap-2">
-      <header className="flex flex-col gap-1">
-        <h2 className="title text-lg">{codeLabel}</h2>
-        <p className="text-sm text-ink-soft">
-          Salon {ROOM_STATUS[status]} · <Settings /> · {viewers} spectateur{viewers > 1 ? 's' : ''}
-        </p>
-        <p>
-          <Player
-            id={host?.id}
-            present={present}
-          />{' '}
-          contre{' '}
-          <Player
-            id={guestId}
-            present={present}
+    <section className="flex flex-col gap-3">
+      {isPlayer && status !== 'closed' && (
+        <TopBarActions>
+          <ConfirmAction
+            icon={<CrossIcon />}
+            label="Fermer le salon"
+            className="order-last"
+            question={
+              gameId && status === 'playing' ? 'Fermer (partie perdue) ?' : 'Fermer le salon ?'
+            }
+            onConfirm={() => change({ status: 'closed' })}
           />
-          {score && ` — ${score.host} à ${score.guest}`}
+        </TopBarActions>
+      )}
+      {/* Le salon en deux lignes : son nom, puis les parties gagnées et ses réglages. */}
+      <header className="text-sm">
+        <h2 className="title">{codeLabel}</h2>
+        <p className="text-ink-soft">
+          {host && guestId ? (
+            <>
+              Parties : <UserShow id={host.id} /> {score?.host ?? 0} – {score?.guest ?? 0}{' '}
+              <UserShow id={guestId} />
+            </>
+          ) : (
+            `Salon ${ROOM_STATUS[status]}`
+          )}
+          {' · '}
+          <Settings />
+          {viewers > 0 && ` · ${viewers} spectateur${viewers > 1 ? 's' : ''}`}
         </p>
       </header>
-      <div className="flex gap-2">
-        {canJoin && (
-          <button
-            className="btn"
-            disabled={committing}
-            onClick={() => change({ guestId: Number(userId) })}>
-            Rejoindre
-          </button>
-        )}
-        {isPlayer && status !== 'closed' && (
-          <button
-            className="btn"
-            disabled={committing}
-            onClick={() => change({ status: 'closed' })}>
-            Fermer
-          </button>
-        )}
-      </div>
+      {status === 'waiting' && (
+        <div className="flex flex-wrap items-center gap-2">
+          {canJoin ? (
+            <button
+              className="btn"
+              disabled={committing}
+              onClick={() => change({ guestId: Number(userId) })}>
+              Rejoindre
+            </button>
+          ) : (
+            isPlayer && <p>En attente d'un adversaire : partagez le lien de cette page.</p>
+          )}
+        </div>
+      )}
+      {status === 'closed' && <p className="text-ink-soft">Salon fermé.</p>}
       {Object.values(errors ?? {}).map((error) => (
         <p
           key={error.attribute}
@@ -143,11 +143,6 @@ function RoomDetail() {
           {describe(error).message}
         </p>
       ))}
-      <Messages
-        code={id}
-        isPlayer={isPlayer && status !== 'closed'}
-        messages={messages}
-      />
       {gameId && (
         <GameShow
           id={gameId}
@@ -156,11 +151,15 @@ function RoomDetail() {
           guestId={guestId && String(guestId)}
           roomCode={id}
           imposedColor={imposedColor}
-          opponentAbsent={[host?.id, guestId].some(
-            (p) => p && String(p) !== userId && !present.includes(String(p))
-          )}
+          present={present}
+          messages={messages}
         />
       )}
+      <Messages
+        code={id}
+        isPlayer={isPlayer && status !== 'closed'}
+        messages={messages}
+      />
     </section>
   );
 }

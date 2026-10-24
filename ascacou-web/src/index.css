@@ -28,3 +28,9 @@
 body {
   background: #f4ece3 url('/paper.webp') center / cover fixed;
 }
+
+/* La main sur ce qui est cliquable (Tailwind 4 / wind4 laisse la flèche aux boutons). */
+button:not(:disabled),
+summary {
+  cursor: pointer;
+}

@@ -14,7 +14,7 @@ const KEPT_MESSAGES = 3;
 const reducer = createReducer(
   {},
   {
-    [RECEIVED_EVENT]: (state, { payload: { identifier, message } }) => {
+    [RECEIVED_EVENT]: (state, { payload: { identifier, message, at } }) => {
       if (identifier.channel !== 'RoomChannel') return;
       const room = (state[identifier.code] ??= { ...emptyRoom });
       switch (message.type) {
@@ -37,7 +37,7 @@ const reducer = createReducer(
           break;
         case 'message':
           room.messages ??= [];
-          room.messages.push({ userId: String(message.user_id), code: message.message });
+          room.messages.push({ userId: String(message.user_id), code: message.message, at });
           room.messages = room.messages.slice(-KEPT_MESSAGES);
           break;
       }

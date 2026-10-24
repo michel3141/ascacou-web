@@ -64,8 +64,8 @@ export default function Board({
               <circle
                 cx={x}
                 cy={y}
-                r="0.9"
-                className="fill-ink"
+                r="0.6"
+                className="fill-ink-soft"
               />
               {playable && (
                 <circle
