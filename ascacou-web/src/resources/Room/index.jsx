@@ -1,5 +1,6 @@
-import { createContext, use } from 'react';
-import { Link } from 'react-router';
+import { createContext, use, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { useRoomsActions } from '../../features/rooms';
 import { Index, Show, Watch, createScope } from '@lpr/redux-documents/react';
 import { client } from '../../api';
 import { useUserId } from '../../features/identity';
@@ -95,6 +96,61 @@ function Messages({ code, isPlayer, messages }) {
   );
 }
 
+// Salon fermé : le bilan, et la suite (un nouveau salon aux mêmes réglages pour
+// réinviter l'adversaire, ou l'accueil). La dernière partie reste visible dessous.
+function ClosedPanel({ isPlayer }) {
+  const { host, guestId, score, visibility, dealMethod, allowMultiple, imposedColor } = useRoom();
+  const { openRoom } = useRoomsActions();
+  const navigate = useNavigate();
+  const [error, setError] = useState(null);
+  const hostScore = score?.host ?? 0;
+  const guestScore = score?.guest ?? 0;
+  const again = async () => {
+    try {
+      const settings = { visibility, dealMethod, allowMultiple, imposedColor };
+      const { code } = await openRoom(settings).unwrap();
+      navigate(`/salons/${code}`);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+  return (
+    <div className="flex flex-col gap-3 border border-ink rounded-xl p-3 bg-pearl/60">
+      <h2 className="title">Salon fermé</h2>
+      {guestId ? (
+        <p>
+          <UserShow id={host.id} /> {hostScore} – {guestScore} <UserShow id={guestId} />
+          {' · '}
+          {hostScore === guestScore ? (
+            'égalité'
+          ) : (
+            <>
+              <UserShow id={hostScore > guestScore ? host.id : guestId} /> remporte le salon
+            </>
+          )}
+        </p>
+      ) : (
+        <p className="text-ink-soft">Fermé avant l'arrivée d'un adversaire.</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {isPlayer && (
+          <button
+            className="btn btn-primary"
+            onClick={again}>
+            Nouveau salon, mêmes réglages
+          </button>
+        )}
+        <Link
+          to="/"
+          className="btn">
+          Retour à l'accueil
+        </Link>
+      </div>
+      {error && <p className="text-red-700">{error}</p>}
+    </div>
+  );
+}
+
 function RoomDetail() {
   const { id, codeLabel, status, host, guestId, score, imposedColor, errors } = useRoom();
   const { modify, committing } = useRoomMeta();
@@ -123,7 +179,8 @@ function RoomDetail() {
       <header className="text-sm">
         <h2 className="title">{codeLabel}</h2>
         <p className="text-ink-soft">
-          {host && guestId ? (
+          {/* Salon fermé : le score est dans l'encadré du bilan. */}
+          {host && guestId && status !== 'closed' ? (
             <>
               Parties : <UserShow id={host.id} /> {score?.host ?? 0} – {score?.guest ?? 0}{' '}
               <UserShow id={guestId} />
@@ -158,7 +215,7 @@ function RoomDetail() {
           )}
         </div>
       )}
-      {status === 'closed' && <p className="text-ink-soft">Salon fermé.</p>}
+      {status === 'closed' && <ClosedPanel isPlayer={isPlayer} />}
       {Object.values(errors ?? {}).map((error) => (
         <p
           key={error.attribute}
@@ -169,6 +226,7 @@ function RoomDetail() {
       {gameId && (
         <GameShow
           id={gameId}
+          roomClosed={status === 'closed'}
           me={userId}
           hostId={String(host?.id)}
           guestId={guestId && String(guestId)}

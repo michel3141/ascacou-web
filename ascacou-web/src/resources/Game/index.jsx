@@ -181,7 +181,16 @@ function PawnChoice({ label, colors, value, onChange }) {
   );
 }
 
-function GameView({ me, hostId, guestId, roomCode, present = [], messages = [], imposedColor }) {
+function GameView({
+  me,
+  hostId,
+  guestId,
+  roomCode,
+  roomClosed,
+  present = [],
+  messages = [],
+  imposedColor,
+}) {
   const game = useGame();
   const { modify } = useGameMeta();
   const { playMove, acceptTakeback, nextGame } = useGameActions();
@@ -267,7 +276,7 @@ function GameView({ me, hostId, guestId, roomCode, present = [], messages = [], 
           <p className="title">
             Partie {game.number} : {winner ? <>gagnée par {winner}</> : 'nulle'}
           </p>
-          {mine && (
+          {mine && !roomClosed && (
             <button
               className="btn"
               onClick={next}>
