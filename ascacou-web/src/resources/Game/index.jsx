@@ -279,6 +279,8 @@ function GameView({
           {mine && !roomClosed && (
             <button
               className="btn"
+              disabled={opponentAbsent}
+              title={opponentAbsent ? "Votre adversaire n'est pas là" : undefined}
               onClick={next}>
               Partie suivante
             </button>

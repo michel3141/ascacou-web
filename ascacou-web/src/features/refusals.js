@@ -9,6 +9,7 @@ const messages = {
   room_not_playing: "Le salon n'est pas en jeu.",
   room_closed: 'Le salon est fermé.',
   game_in_progress: "La partie n'est pas terminée.",
+  opponent_absent: "Votre adversaire n'est pas là.",
   not_playing: "La partie n'est pas en phase de jeu.",
   game_finished: 'La partie est terminée.',
   opponent_present: 'Votre adversaire est là.',
