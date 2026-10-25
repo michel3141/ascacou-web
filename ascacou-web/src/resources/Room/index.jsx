@@ -1,4 +1,4 @@
-import { createContext, use, useState } from 'react';
+import { createContext, use } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useRoomsActions } from '../../features/rooms';
 import { Index, Show, Watch, createScope } from '@lpr/redux-documents/react';
@@ -7,7 +7,7 @@ import { useUserId } from '../../features/identity';
 import { useRoomChannel } from '../../features/roomChannel';
 import { useCableActions } from '../../cable';
 import { MESSAGES } from '../../features/messages';
-import { describe } from '../../features/refusals';
+import useNotifyErrors from '../../features/notices/useNotifyErrors';
 import { GameShow } from '../Game';
 import ShareLink from '../../features/ShareLink';
 import { UserShow } from '../User';
@@ -102,17 +102,13 @@ function ClosedPanel({ isPlayer }) {
   const { host, guestId, score, visibility, dealMethod, allowMultiple, imposedColor } = useRoom();
   const { openRoom } = useRoomsActions();
   const navigate = useNavigate();
-  const [error, setError] = useState(null);
   const hostScore = score?.host ?? 0;
   const guestScore = score?.guest ?? 0;
+  // Un refus devient une notification (features/notices) ; sinon, le nouveau salon.
   const again = async () => {
-    try {
-      const settings = { visibility, dealMethod, allowMultiple, imposedColor };
-      const { code } = await openRoom(settings).unwrap();
-      navigate(`/salons/${code}`);
-    } catch (e) {
-      setError(e.message);
-    }
+    const settings = { visibility, dealMethod, allowMultiple, imposedColor };
+    const { payload } = await openRoom(settings);
+    if (payload?.code) navigate(`/salons/${payload.code}`);
   };
   return (
     <div className="flex flex-col gap-3 border border-ink rounded-xl p-3 bg-pearl/60">
@@ -146,14 +142,15 @@ function ClosedPanel({ isPlayer }) {
           Retour à l'accueil
         </Link>
       </div>
-      {error && <p className="text-red-700">{error}</p>}
     </div>
   );
 }
 
 function RoomDetail() {
   const { id, codeLabel, status, host, guestId, score, imposedColor, errors } = useRoom();
-  const { modify, committing } = useRoomMeta();
+  const { modify, committing, error: saveError } = useRoomMeta();
+  // Refus d'une transition (rejoindre, fermer) : notifiés.
+  useNotifyErrors(errors, saveError);
   const userId = useUserId();
   const { present, viewers, gameId, messages = [] } = useRoomChannel(id);
   const isPlayer = userId && [host?.id, guestId].map(String).includes(userId);
@@ -216,13 +213,6 @@ function RoomDetail() {
         </div>
       )}
       {status === 'closed' && <ClosedPanel isPlayer={isPlayer} />}
-      {Object.values(errors ?? {}).map((error) => (
-        <p
-          key={error.attribute}
-          className="text-red-700">
-          {describe(error).message}
-        </p>
-      ))}
       {gameId && (
         <GameShow
           id={gameId}

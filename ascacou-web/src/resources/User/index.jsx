@@ -37,7 +37,7 @@ function NameEditor() {
           className="bg-transparent text-right border-b border-dashed border-ink-faint focus:border-ink focus:border-solid outline-none"
         />
       </span>
-      {error && <span className="text-xs text-red-700">{describe(error).message}</span>}
+      {error && <span className="text-xs text-alert">{describe(error).message}</span>}
     </span>
   );
 }

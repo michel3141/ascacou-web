@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router';
 import Lobby from './pages/Lobby';
 import RoomPage from './pages/RoomPage';
 import { TopBarProvider } from './TopBar';
+import Notices from './features/notices/Notices';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           />
         </Routes>
       </TopBarProvider>
+      <Notices />
     </main>
   );
 }

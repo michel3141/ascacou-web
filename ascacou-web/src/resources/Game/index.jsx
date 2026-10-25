@@ -2,10 +2,10 @@ import { createContext, use, useEffect, useRef, useState } from 'react';
 import { Show, Watch, createScope } from '@lpr/redux-documents/react';
 import { client } from '../../api';
 import { useGameActions } from '../../features/game';
-import { describe } from '../../features/refusals';
 import { MESSAGES } from '../../features/messages';
 import { BarAction, ConfirmAction, FlagIcon, TopBarActions, UndoIcon } from '../../TopBar';
 import { UserShow } from '../User';
+import useNotifyErrors from '../../features/notices/useNotifyErrors';
 import Board from './Board';
 import Card from './Card';
 
@@ -87,14 +87,14 @@ function Hand({ cards, realized, flashing, onFocus }) {
 }
 
 // Pioche : à son tour, le joueur place une carte libre dans l'un des deux jeux.
-function Draft({ game, myTurn, mine, theirs, onError }) {
+function Draft({ game, myTurn, mine, theirs }) {
   const { pickCard } = useGameActions();
-  const [card, setCard] = useState(null);
+  const [selected, setCard] = useState(null);
+  // La carte choisie ne vaut que pour son tour (sinon : « Ce n'est pas à vous »).
+  const card = myTurn ? selected : null;
+  const full = (hand) => (hand === 'host' ? game.hostHand : game.guestHand).length >= 8;
   const free = ALL_CARDS.filter((c) => !game.hostHand.includes(c) && !game.guestHand.includes(c));
-  const pick = (hand) =>
-    pickCard({ gameId: game.id, card, hand })
-      .unwrap()
-      .then(() => setCard(null), onError);
+  const pick = (hand) => pickCard({ gameId: game.id, card, hand }).then(() => setCard(null));
   return (
     <div className="flex flex-col gap-2">
       <p>Pioche{myTurn ? ' : à vous de placer une carte' : ''}</p>
@@ -112,11 +112,13 @@ function Draft({ game, myTurn, mine, theirs, onError }) {
         <div className="flex gap-2">
           <button
             className="btn"
+            disabled={full(mine)}
             onClick={() => pick(mine)}>
             Dans mon jeu
           </button>
           <button
             className="btn"
+            disabled={full(theirs)}
             onClick={() => pick(theirs)}>
             Dans le sien
           </button>
@@ -192,15 +194,13 @@ function GameView({
   imposedColor,
 }) {
   const game = useGame();
-  const { modify } = useGameMeta();
+  const { modify, error: saveError } = useGameMeta();
   const { playMove, acceptTakeback, nextGame } = useGameActions();
   const [color, setColor] = useState('black');
   const [nextColor, setNextColor] = useState('black');
-  const [error, setError] = useState(null);
   const { mine, theirs } = roles({ me, hostId, guestId });
   const myTurn = Boolean(mine) && String(game.currentPlayerId) === me;
   const opponentId = mine === 'host' ? guestId : hostId;
-  const onError = (e) => setError(e.message);
   const playing = game.status === 'playing';
   const allowed = game.requiredColor ? [game.requiredColor] : Object.keys(COLORS);
   const current = allowed.includes(color) ? color : allowed[0];
@@ -219,6 +219,8 @@ function GameView({
   ];
   const ids = { host: hostId, guest: guestId };
   const opponentAbsent = Boolean(mine) && !present.includes(ids[theirs]);
+  // Refus d'une transition (abandon, annulation…) : notifiés, pas affichés en bas.
+  useNotifyErrors(game.errors, saveError);
   const lastMessage = (id) => messages.findLast((m) => m.userId === id);
   const hand = (role) => (
     <Hand
@@ -267,23 +269,17 @@ function GameView({
   }[game.endReason];
 
   const play = (coord) => {
-    setError(null);
     const imposed = imposedColor ? { nextColor } : {};
-    playMove({ gameId: game.id, rank, coord, color: current, ...imposed })
-      .unwrap()
-      .catch(onError);
+    playMove({ gameId: game.id, rank, coord, color: current, ...imposed });
   };
   const accept = () => {
-    setError(null);
-    acceptTakeback({ gameId: game.id }).unwrap().catch(onError);
+    acceptTakeback({ gameId: game.id });
   };
   const change = (changes) => {
-    setError(null);
     modify(changes, { delay: 0 });
   };
   const next = () => {
-    setError(null);
-    nextGame({ roomCode }).unwrap().catch(onError);
+    nextGame({ roomCode });
   };
 
   // Contre le plateau, du côté du joueur qui doit agir : le choix de couleur (actif pour
@@ -389,7 +385,6 @@ function GameView({
           myTurn={myTurn}
           mine={mine}
           theirs={theirs}
-          onError={onError}
         />
       ) : (
         <Board
@@ -424,14 +419,6 @@ function GameView({
           </button>
         )}
       </div>
-      {error && <p className="text-red-700">{error}</p>}
-      {Object.values(game.errors ?? {}).map((e) => (
-        <p
-          key={e.attribute}
-          className="text-red-700">
-          {describe(e).message}
-        </p>
-      ))}
     </section>
   );
 }

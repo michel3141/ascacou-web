@@ -32,16 +32,12 @@ function OpenRoom() {
     allowMultiple: false,
     imposedColor: false,
   });
-  const [error, setError] = useState(null);
   const set = (key, value) => setSettings({ ...settings, [key]: value });
+  // Un refus devient une notification (features/notices) ; sinon, le salon.
   const open = async (event) => {
     event.preventDefault();
-    try {
-      const { code } = await openRoom(settings).unwrap();
-      navigate(`/salons/${code}`);
-    } catch (e) {
-      setError(e.message);
-    }
+    const { payload } = await openRoom(settings);
+    if (payload?.code) navigate(`/salons/${payload.code}`);
   };
   return (
     <form
@@ -95,7 +91,6 @@ function OpenRoom() {
         </label>
       </div>
       <button className="btn btn-primary self-end px-6">Ouvrir</button>
-      {error && <p className="text-red-700">{error}</p>}
     </form>
   );
 }

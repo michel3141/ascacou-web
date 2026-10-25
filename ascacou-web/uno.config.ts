@@ -10,6 +10,7 @@ export default defineConfig({
       ink: { DEFAULT: '#181010', soft: '#606060', faint: '#a0a0a0' }, // pions noirs, textes
       pearl: '#f8f8f8', // pions blancs
       green: '#309880', // pion vert (case où l'on ne peut plus jouer)
+      alert: '#a33a2a', // erreurs : rouge brique, de la famille de l'encre
     },
     font: {
       sans: "'Outfit Variable', system-ui, sans-serif",
