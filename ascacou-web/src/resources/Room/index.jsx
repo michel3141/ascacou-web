@@ -8,6 +8,7 @@ import { useCableActions } from '../../cable';
 import { MESSAGES } from '../../features/messages';
 import { describe } from '../../features/refusals';
 import { GameShow } from '../Game';
+import ShareLink from '../../features/ShareLink';
 import { UserShow } from '../User';
 import { ROOM_STATUS, VISIBILITY } from '../../features/labels';
 import { ConfirmAction, CrossIcon, TopBarActions } from '../../TopBar';
@@ -136,16 +137,24 @@ function RoomDetail() {
         </p>
       </header>
       {status === 'waiting' && (
-        <div className="flex flex-wrap items-center gap-2">
-          {canJoin ? (
+        <div className="flex flex-col gap-2">
+          {canJoin && (
             <button
-              className="btn"
+              className="btn btn-primary self-start"
               disabled={committing}
               onClick={() => change({ guestId: Number(userId) })}>
               Rejoindre
             </button>
-          ) : (
-            isPlayer && <p>En attente d'un adversaire : partagez le lien de cette page.</p>
+          )}
+          {isPlayer && (
+            <>
+              <p>En attente d'un adversaire : envoyez-lui le lien du salon.</p>
+              <ShareLink
+                url={window.location.href}
+                title="Ascacou"
+                text={`Une partie d'Ascacou ? Rejoignez-moi dans le salon « ${codeLabel} ».`}
+              />
+            </>
           )}
         </div>
       )}
