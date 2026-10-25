@@ -244,6 +244,27 @@ function GameView({
     ) : (
       <UserShow id={ids[game.result]} />
     );
+  // Raison de la fin (end_reason), dite du point de vue du perdant : un abandon (drapeau,
+  // ou fermeture du salon, qui fait abandonner la partie en cours), ou une victoire
+  // réclamée face à un absent. Rien pour une fin aux motifs.
+  const loserRole = { host: 'guest', guest: 'host' }[game.result];
+  const loser = loserRole === mine ? 'vous' : loserRole && <UserShow id={ids[loserRole]} />;
+  const endReason = {
+    resign: roomClosed ? (
+      <>
+        {loser} {loserRole === mine ? 'avez' : 'a'} fermé le salon
+      </>
+    ) : (
+      <>
+        {loser} {loserRole === mine ? 'avez' : 'a'} abandonné
+      </>
+    ),
+    claim: (
+      <>
+        victoire réclamée, {loser} {loserRole === mine ? 'étiez' : 'était'} absent
+      </>
+    ),
+  }[game.endReason];
 
   const play = (coord) => {
     setError(null);
@@ -273,8 +294,11 @@ function GameView({
     if (game.status === 'finished')
       return role === bottom ? (
         <>
-          <p className="title">
-            Partie {game.number} : {winner ? <>gagnée par {winner}</> : 'nulle'}
+          <p className="flex flex-col items-center leading-tight">
+            <span className="title">
+              Partie {game.number} : {winner ? <>gagnée par {winner}</> : 'nulle'}
+            </span>
+            {endReason && <span className="text-sm text-ink-soft">{endReason}</span>}
           </p>
           {mine && !roomClosed && (
             <button
