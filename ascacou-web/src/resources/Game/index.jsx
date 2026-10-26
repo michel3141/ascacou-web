@@ -99,7 +99,7 @@ function Hand({ cards, slots = 0, realized, flashing, onFocus, onPlace }) {
 
 // Pioche : les cartes encore libres, face visible. À son tour, le joueur en choisit une,
 // puis la place dans son jeu (en bas) ou dans celui de l'adversaire (en haut).
-function Draft({ game, me, mine, card, onChoose }) {
+function Draft({ game, me, mine, card, onChoose, onPass }) {
   const free = ALL_CARDS.filter((c) => !game.hostHand.includes(c) && !game.guestHand.includes(c));
   const picked = 16 - free.length;
   const first = String(game.firstPlayerId) === me;
@@ -113,6 +113,15 @@ function Draft({ game, me, mine, card, onChoose }) {
       <p className="flex flex-col items-center leading-tight">
         <span className="title">Pioche · carte {picked + 1}/16</span>
         <span className="text-sm text-ink-soft text-center">{rule}</span>
+        {/* Avant la première carte, celui qui doit piocher peut laisser l'autre piocher
+            en premier : il commencera alors la partie. */}
+        {onPass && picked === 0 && (
+          <button
+            className="text-sm underline underline-offset-4"
+            onClick={onPass}>
+            Laisser piocher l'adversaire en premier
+          </button>
+        )}
       </p>
       <div className="grid grid-cols-8 gap-1">
         {free.map((c) => (
@@ -189,6 +198,7 @@ function GameView({
   guestId,
   roomCode,
   roomClosed,
+  dealMethod,
   present = [],
   messages = [],
   imposedColor,
@@ -416,6 +426,7 @@ function GameView({
           mine={mine}
           card={card}
           onChoose={myTurn ? setChosen : undefined}
+          onPass={myTurn ? () => change({ firstPlayerId: Number(me) }) : undefined}
         />
       ) : (
         <Board
@@ -435,13 +446,17 @@ function GameView({
       {strip(bottom)}
       {/* Actions secondaires et erreurs : sous son jeu, sans déplacer le plateau. */}
       <div className="flex flex-wrap gap-x-4 text-sm text-ink-soft">
-        {playing && myTurn && rank === 1 && String(game.firstPlayerId) === me && (
-          <button
-            className="underline underline-offset-4"
-            onClick={() => change({ firstPlayerId: Number(opponentId) })}>
-            Laisser commencer l'adversaire
-          </button>
-        )}
+        {playing &&
+          myTurn &&
+          rank === 1 &&
+          dealMethod !== 'draft' &&
+          String(game.firstPlayerId) === me && (
+            <button
+              className="underline underline-offset-4"
+              onClick={() => change({ firstPlayerId: Number(opponentId) })}>
+              Laisser commencer l'adversaire
+            </button>
+          )}
         {opponentAbsent && game.status !== 'finished' && (
           <button
             className="underline underline-offset-4"

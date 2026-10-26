@@ -147,7 +147,8 @@ function ClosedPanel({ isPlayer }) {
 }
 
 function RoomDetail() {
-  const { id, codeLabel, status, host, guestId, score, imposedColor, errors } = useRoom();
+  const { id, codeLabel, status, host, guestId, score, dealMethod, imposedColor, errors } =
+    useRoom();
   const { modify, committing, error: saveError } = useRoomMeta();
   // Refus d'une transition (rejoindre, fermer) : notifiés.
   useNotifyErrors(errors, saveError);
@@ -221,6 +222,7 @@ function RoomDetail() {
           hostId={String(host?.id)}
           guestId={guestId && String(guestId)}
           roomCode={id}
+          dealMethod={dealMethod}
           imposedColor={imposedColor}
           present={present}
           messages={messages}
