@@ -8,4 +8,5 @@ export default {
   singleQuote: true,
   trailingComma: 'es5',
   printWidth: 100, // 80 suffirait peut-être
+  ignorePatterns: ['src/schema.json'], // copie conforme du schéma du back
 };

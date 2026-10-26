@@ -23,6 +23,7 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+!.env.production
 
 # Positions du jeu (volumineux, hors dépôt)
 IA/

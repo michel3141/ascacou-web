@@ -1,0 +1,16 @@
+# Apache (o2switch) : les routes du front (/rooms/<code>…) servent index.html.
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
+
+# index.html et version.json toujours revalidés (nouvelle release prise tout de suite) ;
+# les assets portent leur empreinte dans leur nom : cache long.
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|version\.json)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  <If "%{REQUEST_URI} =~ m#^/assets/#">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </If>
+</IfModule>
