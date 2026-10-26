@@ -1,3 +1,21 @@
+/* Charte graphique : les couleurs du livret et de la boîte, déclarées ici seulement.
+   Papier, encre et blanc sont ceux de la carte d'ascacou.com. Le thème UnoCSS
+   (uno.config.ts) s'y réfère : bg-paper, text-ink, fill-green…
+   Copies figées, à reporter à la main (fichiers statiques, sans CSS) :
+   public/favicon.svg, public/logo.svg, les icônes PNG (rendues depuis favicon.svg),
+   public/manifest.webmanifest (theme_color, background_color), index.html (theme-color). */
+:root {
+  --paper: #e8d9c6; /* plateau, cartes */
+  --paper-dark: #e0d1be;
+  --ink: #1d1d1b; /* pions noirs, textes */
+  --ink-soft: #606060;
+  --ink-faint: #a0a0a0;
+  --pearl: #fff; /* pions blancs, boutons, champs */
+  --green: #309880; /* pion vert (case où l'on ne peut plus jouer) */
+  --alert: #a33a2a; /* erreurs : rouge brique, de la famille de l'encre */
+  --page: #f4ece3; /* fond de page, sous la texture du papier */
+}
+
 /* Motif qui vient d'être réalisé : le carré s'entoure puis s'efface, la carte palpite. */
 @keyframes square-flash {
   0%,
@@ -26,7 +44,7 @@
 
 /* Fond de page : le papier du plateau, très éclairci, pour casser le blanc. */
 body {
-  background: #f4ece3 url('/paper.webp') center / cover fixed;
+  background: var(--page) url('/paper.webp') center / cover fixed;
 }
 
 /* La main sur ce qui est cliquable (Tailwind 4 / wind4 laisse la flèche aux boutons). */
