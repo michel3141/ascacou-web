@@ -16,7 +16,7 @@ function Notice({ id, message }) {
       type="button"
       role="alert"
       onClick={() => dismiss(id)}
-      className="pointer-events-auto rounded-lg border border-alert bg-pearl px-3 py-2 text-alert shadow-sm">
+      className="pointer-events-auto rounded-none rounded-bl-lg border border-alert bg-pearl px-3 py-2 text-alert shadow-sm">
       {message}
     </button>
   );

@@ -25,11 +25,11 @@ function roles({ me, hostId, guestId }) {
   return {};
 }
 
-// Message prédéfini reçu, affiché quelques secondes près du nom de son auteur (sans
-// déplacer le plateau).
+// Message prédéfini reçu, affiché quelques secondes près du nom de son auteur, par-dessus
+// son jeu (rien ne bouge). below : sous le nom (bandeau du haut), sinon au-dessus.
 const BUBBLE_MS = 4000;
 
-function Bubble({ message }) {
+function Bubble({ message, below }) {
   const [visible, setVisible] = useState(() => Date.now() - message.at < BUBBLE_MS);
   useEffect(() => {
     const left = BUBBLE_MS - (Date.now() - message.at);
@@ -39,33 +39,45 @@ function Bubble({ message }) {
   }, [message.at]);
   if (!visible) return null;
   return (
-    <span className="rounded-lg bg-pearl border border-ink-faint px-2 text-sm">
+    <span
+      className={`absolute left-0 z-10 whitespace-nowrap msg shadow-md pointer-events-none ${below ? 'top-full mt-1' : 'bottom-full mb-1'}`}>
       {MESSAGES[message.code]}
     </span>
   );
 }
 
 // Bandeau d'un joueur, au-dessus ou au-dessous du plateau (comme les pendules de
-// lichess) : son nom, en encre pleine quand c'est à lui d'agir ; absent ; ses motifs.
-function PlayerStrip({ id, mine, active, present, score, message }) {
+// lichess) : son nom, en encre pleine quand c'est à lui d'agir ; absent ; ses motifs
+// (score null : pas encore de motifs à compter, pendant la pioche).
+// children : ce qui se passe de son côté (bandeau du haut, qui tient lieu de ligne
+// d'actions : sa hauteur est fixe, le plateau ne bouge pas).
+function PlayerStrip({ id, mine, active, present, score, message, top, children }) {
   return (
     <div
       data-active={active || undefined}
-      className="flex items-center gap-2 min-h-7">
-      <span className={`rounded-md px-2 py-0.5 ${active ? 'bg-ink text-pearl' : 'text-ink-soft'}`}>
-        {id ? <UserShow id={id} /> : '—'}
-        {mine && ' (vous)'}
+      className={`flex items-center gap-2 ${top ? 'h-11' : 'min-h-7'}`}>
+      <span
+        className={`relative min-w-0 rounded-md px-2 py-0.5 ${active ? 'bg-ink text-pearl' : 'text-ink-soft'}`}>
+        {/* Pseudo long (30 caractères) : coupé, le bandeau garde sa ligne. */}
+        <span className="block truncate">
+          {id ? <UserShow id={id} /> : '—'}
+          {mine && ' (vous)'}
+        </span>
+        {message && (
+          <Bubble
+            key={message.at}
+            message={message}
+            below={top}
+          />
+        )}
       </span>
       {id && !present && <span className="text-sm text-ink-faint">absent</span>}
-      {message && (
-        <Bubble
-          key={message.at}
-          message={message}
-        />
+      <span className="ml-auto flex shrink-0 items-center gap-3">{children}</span>
+      {score !== null && (
+        <span className="shrink-0 text-sm">
+          {score} motif{score > 1 ? 's' : ''}
+        </span>
       )}
-      <span className="ml-auto text-sm">
-        {score ?? 0} motif{score > 1 ? 's' : ''}
-      </span>
     </div>
   );
 }
@@ -253,15 +265,17 @@ function GameView({
       onPlace={card !== null && !full(role) ? () => place(role) : undefined}
     />
   );
-  const strip = (role) => (
+  const strip = (role, children) => (
     <PlayerStrip
       id={ids[role]}
       mine={role === mine}
       active={game.status !== 'finished' && String(game.currentPlayerId) === ids[role]}
       present={present.includes(ids[role])}
-      score={game.score?.[role]}
+      score={drafting ? null : (game.score?.[role] ?? 0)}
       message={lastMessage(ids[role])}
-    />
+      top={role === top}>
+      {children}
+    </PlayerStrip>
   );
   const winner =
     game.result === 'draw' ? null : game.result === mine ? (
@@ -305,9 +319,10 @@ function GameView({
     nextGame({ roomCode });
   };
 
-  // Contre le plateau, du côté du joueur qui doit agir : le choix de couleur (actif pour
-  // soi, grisé pour l'adversaire), la réponse à une demande d'annulation, le résultat.
-  // Les deux emplacements gardent leur hauteur : le plateau ne bouge pas.
+  // Du côté du joueur qui doit agir : le choix de couleur (actif pour soi, grisé pour
+  // l'adversaire), la réponse à une demande d'annulation, le résultat. En bas, une ligne
+  // contre le plateau ; en haut, dans le bandeau de l'adversaire (place comptée sur un
+  // téléphone). Les deux gardent leur hauteur : le plateau ne bouge pas.
   const activeRole = [top, bottom].find((role) => String(game.currentPlayerId) === ids[role]);
   const slot = (role) => {
     if (game.status === 'finished')
@@ -343,7 +358,7 @@ function GameView({
       if (role !== activeRole) return null;
       return (
         <span className="text-sm text-ink-soft">
-          {role === mine ? 'Choisissez une carte' : <>Choix de {<UserShow id={ids[role]} />}…</>}
+          {role === mine ? 'Choisissez une carte' : 'choisit une carte…'}
         </span>
       );
     }
@@ -416,9 +431,8 @@ function GameView({
           />
         </TopBarActions>
       )}
-      {strip(top)}
+      {strip(top, slot(top))}
       {hand(top)}
-      {slotRow(top)}
       {drafting ? (
         <Draft
           game={game}

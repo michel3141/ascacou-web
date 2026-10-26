@@ -41,7 +41,7 @@ function OpenRoom() {
   };
   return (
     <form
-      className="flex flex-col gap-3 border border-ink rounded-xl p-3 bg-pearl/60"
+      className="flex flex-col gap-3 box p-3 bg-pearl/60"
       onSubmit={open}>
       <h2 className="title">Nouveau salon</h2>
       <div className="grid grid-cols-2 gap-2">

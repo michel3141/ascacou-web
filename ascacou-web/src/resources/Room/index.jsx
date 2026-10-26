@@ -75,11 +75,11 @@ function Messages({ code, isPlayer, messages }) {
       <summary className="cursor-pointer text-ink-soft">Messages</summary>
       <div className="flex flex-col gap-2 pt-2">
         {isPlayer && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-2">
             {Object.entries(MESSAGES).map(([message, text]) => (
               <button
                 key={message}
-                className="btn px-2 py-0.5"
+                className="msg active:bg-paper"
                 onClick={() => say(message)}>
                 {text}
               </button>
@@ -87,8 +87,13 @@ function Messages({ code, isPlayer, messages }) {
           </div>
         )}
         {messages.map(({ userId, code: message, at }) => (
-          <p key={at}>
-            <UserShow id={userId} /> : {MESSAGES[message]}
+          <p
+            key={at}
+            className="flex items-center gap-2">
+            <span className="text-ink-soft">
+              <UserShow id={userId} />
+            </span>
+            <span className="msg">{MESSAGES[message]}</span>
           </p>
         ))}
       </div>
@@ -111,7 +116,7 @@ function ClosedPanel({ isPlayer }) {
     if (payload?.code) navigate(`/salons/${payload.code}`);
   };
   return (
-    <div className="flex flex-col gap-3 border border-ink rounded-xl p-3 bg-pearl/60">
+    <div className="flex flex-col gap-3 box p-3 bg-pearl/60">
       <h2 className="title">Salon fermé</h2>
       {guestId ? (
         <p>
@@ -158,6 +163,37 @@ function RoomDetail() {
   const canJoin = userId && status === 'waiting' && !isPlayer;
   // Écriture immédiate : une transition, envoyée tout de suite.
   const change = (changes) => modify(changes, { delay: 0 });
+  const spectators = viewers > 0 && ` · ${viewers} spectateur${viewers > 1 ? 's' : ''}`;
+  // Le salon en deux lignes : son nom, puis les parties gagnées et ses réglages. Pendant
+  // une partie, une seule ligne (nom et parties gagnées), les réglages sous le jeu : sur
+  // un téléphone, tout ce qui sert à jouer tient à l'écran.
+  const inGame = gameId && status === 'playing';
+  const header = inGame ? (
+    <header className="flex items-baseline gap-3 text-sm">
+      <h2 className="title min-w-0 truncate">{codeLabel}</h2>
+      <span className="ml-auto max-w-1/2 truncate text-ink-soft">
+        <UserShow id={host.id} /> {score?.host ?? 0} – {score?.guest ?? 0} <UserShow id={guestId} />
+      </span>
+    </header>
+  ) : (
+    <header className="text-sm">
+      <h2 className="title">{codeLabel}</h2>
+      <p className="text-ink-soft">
+        {/* Salon fermé : le score est dans l'encadré du bilan. */}
+        {host && guestId && status !== 'closed' ? (
+          <>
+            Parties : <UserShow id={host.id} /> {score?.host ?? 0} – {score?.guest ?? 0}{' '}
+            <UserShow id={guestId} />
+          </>
+        ) : (
+          `Salon ${ROOM_STATUS[status]}`
+        )}
+        {' · '}
+        <Settings />
+        {spectators}
+      </p>
+    </header>
+  );
   return (
     <section className="flex flex-col gap-3">
       {isPlayer && status !== 'closed' && (
@@ -173,24 +209,7 @@ function RoomDetail() {
           />
         </TopBarActions>
       )}
-      {/* Le salon en deux lignes : son nom, puis les parties gagnées et ses réglages. */}
-      <header className="text-sm">
-        <h2 className="title">{codeLabel}</h2>
-        <p className="text-ink-soft">
-          {/* Salon fermé : le score est dans l'encadré du bilan. */}
-          {host && guestId && status !== 'closed' ? (
-            <>
-              Parties : <UserShow id={host.id} /> {score?.host ?? 0} – {score?.guest ?? 0}{' '}
-              <UserShow id={guestId} />
-            </>
-          ) : (
-            `Salon ${ROOM_STATUS[status]}`
-          )}
-          {' · '}
-          <Settings />
-          {viewers > 0 && ` · ${viewers} spectateur${viewers > 1 ? 's' : ''}`}
-        </p>
-      </header>
+      {header}
       {status === 'waiting' && (
         <div className="flex flex-col gap-2">
           {canJoin && (
@@ -227,6 +246,12 @@ function RoomDetail() {
           present={present}
           messages={messages}
         />
+      )}
+      {inGame && (
+        <p className="text-sm text-ink-soft">
+          <Settings />
+          {spectators}
+        </p>
       )}
       <Messages
         code={id}

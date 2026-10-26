@@ -17,8 +17,16 @@ export default defineConfig({
     },
   },
   shortcuts: {
-    // Encadrés du livret : bord fin à l'encre, coins arrondis.
-    btn: 'border border-ink rounded-lg px-3 py-1 bg-pearl text-ink active:bg-paper disabled:opacity-40',
+    // Encadrés du livret : bord fin à l'encre, coins droits sauf un grand arrondi, en bas
+    // à gauche comme celui des cartes et du plateau.
+    box: 'border border-ink rounded-none rounded-bl-3xl',
+    // Message prédéfini : le même aspect, à envoyer (bouton) ou reçu (bulle). Couleur et
+    // graisse explicites : une bulle s'affiche dans le bandeau d'un joueur (encre inversée
+    // quand c'est à lui de jouer).
+    msg: 'rounded-lg border border-ink bg-pearl px-2.5 py-0.5 text-sm font-normal text-ink',
+    // Le texte courant est léger (Silka Light dans le livret) ; les boutons gardent la
+    // graisse normale, pour se distinguer du texte.
+    btn: 'border border-ink rounded-lg px-3 py-1 bg-pearl text-ink font-normal active:bg-paper disabled:opacity-40',
     // Action principale de l'écran : blanc sur encre.
     'btn-primary': 'bg-ink text-pearl active:bg-ink-soft',
     // Choix en cours : le bouton reste noir sur blanc, entouré de gris.
