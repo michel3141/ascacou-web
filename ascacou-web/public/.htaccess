@@ -1,4 +1,4 @@
-# Apache (o2switch) : les routes du front (/rooms/<code>…) servent index.html.
+# Apache (o2switch) : les routes du front (/salons/<code>…) servent index.html.
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
