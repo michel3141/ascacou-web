@@ -42,8 +42,10 @@ run = $(DOCKER) compose run --rm -T node sh -c 'pnpm install --frozen-lockfile -
 built = $(shell jq -r .$(1) $(APP)/dist/version.json 2>/dev/null)
 
 DEST = $(DEPLOY_$(TARGET))
+# .well-known/ appartient à l'hébergement (validation Let's Encrypt d'AutoSSL) :
+# jamais supprimé, mais un fichier de dist/.well-known/ y serait bien copié.
 RSYNC = rsync -rlz --checksum --delete-after --delay-updates --itemize-changes \
-  --chmod=D755,F644 $(APP)/dist/ $(DEST)/
+  --filter='P /.well-known/' --chmod=D755,F644 $(APP)/dist/ $(DEST)/
 
 .PHONY: check schema version prepare-release build release deploy-plan deploy \
   check-schema check-clean check-release-files check-version check-changelog check-deploy
