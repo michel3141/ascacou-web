@@ -16,7 +16,7 @@ export default function Identity() {
         createIdentity({ name });
       }}>
       <input
-        className="flex-1 border border-ink rounded-lg px-2 py-1"
+        className="flex-1 border border-ink corner px-2 py-1"
         value={name}
         onChange={(event) => setName(event.target.value)}
         placeholder="Pseudo"

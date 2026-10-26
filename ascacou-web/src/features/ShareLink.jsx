@@ -34,7 +34,7 @@ export default function ShareLink({ url, title, text, label = 'Partager le lien'
           readOnly
           value={url}
           onFocus={(event) => event.target.select()}
-          className="flex-1 min-w-0 border border-ink-faint rounded-lg px-2 py-1 bg-pearl text-sm"
+          className="flex-1 min-w-0 field text-sm"
         />
       )}
     </span>

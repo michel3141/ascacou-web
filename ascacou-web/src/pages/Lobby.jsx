@@ -60,7 +60,7 @@ function OpenRoom() {
       <label className="flex items-center gap-2">
         Cartes
         <select
-          className="flex-1 border border-ink-faint rounded-lg px-2 py-1 bg-pearl"
+          className="flex-1 field"
           value={settings.dealMethod}
           onChange={(event) => set('dealMethod', event.target.value)}>
           {Object.entries(DEALS).map(([value, label]) => (
