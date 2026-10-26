@@ -1,13 +1,14 @@
 /* Charte graphique : les couleurs du livret et de la boîte, déclarées ici seulement.
-   Papier, encre et blanc sont ceux de la carte d'ascacou.com. Le thème UnoCSS
+   Papier, encre et blanc sont ceux des cartes du livret. Le thème UnoCSS
    (uno.config.ts) s'y réfère : bg-paper, text-ink, fill-green…
-   Copies figées, à reporter à la main (fichiers statiques, sans CSS) :
-   public/favicon.svg, public/logo.svg, les icônes PNG (rendues depuis favicon.svg),
-   public/manifest.webmanifest (theme_color, background_color), index.html (theme-color). */
+   Copies figées, à reporter à la main (fichiers statiques, sans CSS) : public/logo.svg,
+   public/manifest.webmanifest (theme_color, background_color), index.html (theme-color).
+   Exception voulue : public/favicon.svg et les icônes PNG (rendues depuis lui) gardent
+   les couleurs du favicon d'ascacou.com (#e8d9c6, #1d1d1b), pour ressembler au site. */
 :root {
-  --paper: #e8d9c6; /* plateau, cartes */
-  --paper-dark: #e0d1be;
-  --ink: #1d1d1b; /* pions noirs, textes */
+  --paper: #e3cfb6; /* plateau, cartes */
+  --paper-dark: #dbc7ae;
+  --ink: #181616; /* pions noirs, textes */
   --ink-soft: #606060;
   --ink-faint: #a0a0a0;
   --pearl: #fff; /* pions blancs, boutons, champs */
