@@ -28,6 +28,10 @@ TARGET ?= dev
 
 include deploy.mk
 
+# Les conteneurs tournent avec l'uid de l'hôte (compose.yaml).
+export HOST_UID := $(shell id -u)
+export HOST_GID := $(shell id -g)
+
 # Évalué à chaque usage (pas :=) : la version change pendant le build.
 version = $(shell bin/bump V)
 

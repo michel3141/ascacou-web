@@ -2,10 +2,13 @@
 services:
   node:
     build: .
-    user: node
+    # Utilisateur de l'hôte : node_modules/ et dist/ s'écrivent dans le dossier monté,
+    # qui lui appartient (uid 1000 par défaut ; voir README pour un autre uid).
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /workspace
     command: sh -c 'pnpm install && pnpm dev'
     environment:
+      HOME: /tmp # l'uid de l'hôte n'a pas de compte dans l'image (caches de corepack)
       LANG: fr_FR.UTF-8
       COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
     volumes:

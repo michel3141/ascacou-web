@@ -11,3 +11,6 @@ Thumbs.db
 
 # État du workflow de release (Makefile)
 .release-state
+
+# Uid/gid de l'hôte pour docker compose (README)
+.env

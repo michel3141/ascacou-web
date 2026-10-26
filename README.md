@@ -9,6 +9,9 @@ Front de la version web et mobile d'**Ascacou**, jeu de construction imaginé pa
 - Développement : `docker compose up` (serveur de vite sur :5173, API et cable
   relayés vers le back de dev).
 - Releases et déploiement : [WORKFLOW.md](WORKFLOW.md).
+- Le conteneur tourne avec l'uid de l'hôte : les recettes `make` le passent
+  d'elles-mêmes ; pour `docker compose` à la main, sur une machine où l'uid n'est
+  pas 1000 : `printf 'HOST_UID=%s\nHOST_GID=%s\n' $(id -u) $(id -g) > .env`.
 
 ## Licence
 
