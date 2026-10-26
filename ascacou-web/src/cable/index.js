@@ -2,7 +2,7 @@ import { createConsumer } from '@rails/actioncable';
 import rtk from '@lpr/rtk';
 import { createActionsHook } from '@lpr/rtk/react';
 import { useEffect } from 'react';
-import { client } from '../api';
+import { apiUrl, client } from '../api';
 
 // Connecteur du cable : ws(s)://<hôte>/cable?token=<jwt>. Le cable annonce, il ne
 // transporte pas l'état : chaque message reçu devient un RECEIVED_EVENT, que les
@@ -12,9 +12,12 @@ const { createEvents, createActions } = rtk(name);
 
 // URL recalculée à chaque (re)connexion : JWT courant, géré par spraypaint (renouvelé
 // par X-JWT), ou aucun jeton (spectateur anonyme).
+// Même origine que l'API (http(s) → ws(s) par actioncable).
 const cableUrl = () => {
+  const url = new URL('/cable', apiUrl);
   const jwt = client.model('users').getJWT();
-  return jwt ? `/cable?token=${encodeURIComponent(jwt)}` : '/cable';
+  if (jwt) url.searchParams.set('token', jwt);
+  return url.href;
 };
 
 const consumer = createConsumer(cableUrl);

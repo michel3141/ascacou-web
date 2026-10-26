@@ -2,7 +2,11 @@ import createSpraypaintClient, { fetchSpraypaintClient } from '@lpr/spraypaint-t
 
 export const clientApplication = 'ascacou-web';
 
-const params = { url: import.meta.env.VITE_API_URL ?? window.location.origin };
+// Origine de l'API (et du cable) : VITE_API_URL au build, sinon celle du front (dev, via
+// le proxy de vite).
+export const apiUrl = import.meta.env.VITE_API_URL ?? window.location.origin;
+
+const params = { url: apiUrl };
 
 // dev : schéma vivant, servi par le back (Vandal, via le proxy de vite)
 // build : schéma embarqué (src/schema.json, copie de back/ascacou-api/doc/schema.json)
