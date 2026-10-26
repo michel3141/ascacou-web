@@ -70,9 +70,12 @@ function PlayerStrip({ id, mine, active, present, score, message }) {
   );
 }
 
-function Hand({ cards, realized, flashing, onFocus }) {
+// Jeu d'un joueur. Pendant la pioche : ses places libres (`slots`), et `onPlace` quand il
+// peut recevoir la carte choisie (toucher le jeu la place, comme le bouton à côté).
+function Hand({ cards, slots = 0, realized, flashing, onFocus, onPlace }) {
   return (
-    <div className="grid grid-cols-8 gap-1">
+    <div
+      className={`grid grid-cols-8 gap-1 rounded-md ${onPlace ? 'outline-2 outline-dashed outline-ink-faint outline-offset-2' : ''}`}>
       {cards.map((card) => (
         <Card
           key={card}
@@ -80,50 +83,47 @@ function Hand({ cards, realized, flashing, onFocus }) {
           realized={realized?.includes(card)}
           flash={flashing?.includes(card)}
           onFocus={realized?.includes(card) ? onFocus : undefined}
+          onClick={onPlace}
+        />
+      ))}
+      {Array.from({ length: slots }, (_, i) => (
+        <Card
+          key={`slot-${i}`}
+          empty
+          onClick={onPlace}
         />
       ))}
     </div>
   );
 }
 
-// Pioche : à son tour, le joueur place une carte libre dans l'un des deux jeux.
-function Draft({ game, myTurn, mine, theirs }) {
-  const { pickCard } = useGameActions();
-  const [selected, setCard] = useState(null);
-  // La carte choisie ne vaut que pour son tour (sinon : « Ce n'est pas à vous »).
-  const card = myTurn ? selected : null;
-  const full = (hand) => (hand === 'host' ? game.hostHand : game.guestHand).length >= 8;
+// Pioche : les cartes encore libres, face visible. À son tour, le joueur en choisit une,
+// puis la place dans son jeu (en bas) ou dans celui de l'adversaire (en haut).
+function Draft({ game, me, mine, card, onChoose }) {
   const free = ALL_CARDS.filter((c) => !game.hostHand.includes(c) && !game.guestHand.includes(c));
-  const pick = (hand) => pickCard({ gameId: game.id, card, hand }).then(() => setCard(null));
+  const picked = 16 - free.length;
+  const first = String(game.firstPlayerId) === me;
+  const rule = !mine
+    ? 'Le joueur qui ne commence pas la partie pioche en premier.'
+    : first
+      ? 'Vous commencerez la partie : votre adversaire pioche en premier.'
+      : 'Votre adversaire commencera la partie : vous piochez en premier.';
   return (
-    <div className="flex flex-col gap-2">
-      <p>Pioche{myTurn ? ' : à vous de placer une carte' : ''}</p>
+    <div className="flex flex-col gap-2 py-2">
+      <p className="flex flex-col items-center leading-tight">
+        <span className="title">Pioche · carte {picked + 1}/16</span>
+        <span className="text-sm text-ink-soft text-center">{rule}</span>
+      </p>
       <div className="grid grid-cols-8 gap-1">
         {free.map((c) => (
           <Card
             key={c}
             value={c}
             selected={c === card}
-            onClick={myTurn ? () => setCard(c) : undefined}
+            onClick={onChoose && (() => onChoose(c === card ? null : c))}
           />
         ))}
       </div>
-      {card !== null && (
-        <div className="flex gap-2">
-          <button
-            className="btn"
-            disabled={full(mine)}
-            onClick={() => pick(mine)}>
-            Dans mon jeu
-          </button>
-          <button
-            className="btn"
-            disabled={full(theirs)}
-            onClick={() => pick(theirs)}>
-            Dans le sien
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -133,15 +133,15 @@ function Draft({ game, myTurn, mine, theirs }) {
 const FLASH_MS = 1600;
 const squareKey = ({ pattern, coord }) => `${pattern}@${coord}`;
 
-function useFlash(squares) {
+function useFlash(squares, keyOf = squareKey) {
   const previous = useRef(null);
   const [flashed, setFlashed] = useState([]);
-  const key = squares.map(squareKey).join(',');
+  const key = squares.map(keyOf).join(',');
   useEffect(() => {
     const known = previous.current;
-    previous.current = new Set(squares.map(squareKey));
+    previous.current = new Set(squares.map(keyOf));
     if (!known) return undefined;
-    const added = squares.filter((square) => !known.has(squareKey(square)));
+    const added = squares.filter((square) => !known.has(keyOf(square)));
     if (!added.length) return undefined;
     setFlashed(added);
     const timer = setTimeout(() => setFlashed([]), FLASH_MS);
@@ -195,13 +195,14 @@ function GameView({
 }) {
   const game = useGame();
   const { modify, error: saveError } = useGameMeta();
-  const { playMove, acceptTakeback, nextGame } = useGameActions();
+  const { playMove, pickCard, acceptTakeback, nextGame } = useGameActions();
   const [color, setColor] = useState('black');
   const [nextColor, setNextColor] = useState('black');
   const { mine, theirs } = roles({ me, hostId, guestId });
   const myTurn = Boolean(mine) && String(game.currentPlayerId) === me;
   const opponentId = mine === 'host' ? guestId : hostId;
   const playing = game.status === 'playing';
+  const drafting = game.status === 'drafting';
   const allowed = game.requiredColor ? [game.requiredColor] : Object.keys(COLORS);
   const current = allowed.includes(color) ? color : allowed[0];
   const rank = game.board.replace(/[^bw]/g, '').length + 1;
@@ -218,16 +219,28 @@ function GameView({
     ...flashed.map((square) => ({ ...square, flash: true })),
   ];
   const ids = { host: hostId, guest: guestId };
+  // Pioche : carte choisie (seulement à son tour), jeux pleins, carte qui vient d'être
+  // placée (mise en évidence, comme un motif réalisé).
+  const [chosen, setChosen] = useState(null);
+  const card = drafting && myTurn ? chosen : null;
+  const handOf = (role) => (role === 'host' ? game.hostHand : game.guestHand);
+  const full = (role) => handOf(role).length >= 8;
+  const placed = useFlash([...game.hostHand, ...game.guestHand], String);
+  const place = (role) => {
+    pickCard({ gameId: game.id, card, hand: role }).then(() => setChosen(null));
+  };
   const opponentAbsent = Boolean(mine) && !present.includes(ids[theirs]);
   // Refus d'une transition (abandon, annulation…) : notifiés, pas affichés en bas.
   useNotifyErrors(game.errors, saveError);
   const lastMessage = (id) => messages.findLast((m) => m.userId === id);
   const hand = (role) => (
     <Hand
-      cards={role === 'host' ? game.hostHand : game.guestHand}
+      cards={handOf(role)}
+      slots={drafting ? 8 - handOf(role).length : 0}
       realized={realized}
-      flashing={flashed.map(({ pattern }) => pattern)}
+      flashing={drafting ? placed : flashed.map(({ pattern }) => pattern)}
       onFocus={setFocused}
+      onPlace={card !== null && !full(role) ? () => place(role) : undefined}
     />
   );
   const strip = (role) => (
@@ -307,6 +320,23 @@ function GameView({
           )}
         </>
       ) : null;
+    if (drafting) {
+      if (card !== null)
+        return (
+          <button
+            className="btn"
+            disabled={full(role)}
+            onClick={() => place(role)}>
+            {role === mine ? 'Garder pour moi' : "Donner à l'adversaire"}
+          </button>
+        );
+      if (role !== activeRole) return null;
+      return (
+        <span className="text-sm text-ink-soft">
+          {role === mine ? 'Choisissez une carte' : <>Choix de {<UserShow id={ids[role]} />}…</>}
+        </span>
+      );
+    }
     if (!playing || role !== activeRole) return null;
     const acting = role === mine;
     if (game.takebackRequested)
@@ -379,12 +409,13 @@ function GameView({
       {strip(top)}
       {hand(top)}
       {slotRow(top)}
-      {game.status === 'drafting' ? (
+      {drafting ? (
         <Draft
           game={game}
-          myTurn={myTurn}
+          me={me}
           mine={mine}
-          theirs={theirs}
+          card={card}
+          onChoose={myTurn ? setChosen : undefined}
         />
       ) : (
         <Board
