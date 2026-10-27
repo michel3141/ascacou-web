@@ -49,9 +49,10 @@ function Bubble({ message, below }) {
 // Bandeau d'un joueur, au-dessus ou au-dessous du plateau (comme les pendules de
 // lichess) : son nom, en encre pleine quand c'est à lui d'agir ; absent ; ses motifs
 // (score null : pas encore de motifs à compter, pendant la pioche).
+// doing : ce qu'il fait quand c'est à lui (« joue… »), contre son nom.
 // children : ce qui se passe de son côté (bandeau du haut, qui tient lieu de ligne
 // d'actions : sa hauteur est fixe, le plateau ne bouge pas).
-function PlayerStrip({ id, mine, active, present, score, message, top, children }) {
+function PlayerStrip({ id, mine, active, present, score, message, top, doing, children }) {
   return (
     <div
       data-active={active || undefined}
@@ -71,6 +72,9 @@ function PlayerStrip({ id, mine, active, present, score, message, top, children 
           />
         )}
       </span>
+      {doing && (
+        <span className="flex shrink-0 items-center gap-1.5 text-sm text-ink-soft">{doing}</span>
+      )}
       {id && !present && <span className="text-sm text-ink-faint">absent</span>}
       <span className="ml-auto flex shrink-0 items-center gap-3">{children}</span>
       {score !== null && (
@@ -172,11 +176,25 @@ function useFlash(squares, keyOf = squareKey) {
   return flashed;
 }
 
-// Choix d'une couleur par des pions, comme sur le plateau ; le choix en cours est
-// entouré de gris. Sans onChange : grisé (c'est à l'adversaire de choisir).
+// Un pion, comme sur le plateau.
+const Pawn = ({ color, className = 'size-full' }) => (
+  <svg
+    viewBox="0 0 20 20"
+    className={className}>
+    <circle
+      cx="10"
+      cy="10"
+      r="9"
+      className={color === 'black' ? 'fill-ink' : 'fill-pearl stroke-ink-faint'}
+      strokeWidth="0.5"
+    />
+  </svg>
+);
+
+// Choix d'une couleur par des pions ; le choix en cours est entouré de gris.
 function PawnChoice({ label, colors, value, onChange }) {
   return (
-    <div className={`flex items-center gap-3 ${onChange ? '' : 'opacity-30'}`}>
+    <div className="flex items-center gap-3">
       <span className="text-sm text-ink-soft">{label}</span>
       {colors.map((c) => (
         <button
@@ -184,20 +202,9 @@ function PawnChoice({ label, colors, value, onChange }) {
           type="button"
           aria-label={COLORS[c]}
           aria-pressed={c === value}
-          disabled={!onChange}
           onClick={() => onChange(c)}
           className={`size-9 rounded-full ${c === value ? 'outline-3 outline-ink-faint outline-offset-2' : ''}`}>
-          <svg
-            viewBox="0 0 20 20"
-            className="size-full">
-            <circle
-              cx="10"
-              cy="10"
-              r="9"
-              className={c === 'black' ? 'fill-ink' : 'fill-pearl stroke-ink-faint'}
-              strokeWidth="0.5"
-            />
-          </svg>
+          <Pawn color={c} />
         </button>
       ))}
     </div>
@@ -273,6 +280,7 @@ function GameView({
       present={present.includes(ids[role])}
       score={drafting ? null : (game.score?.[role] ?? 0)}
       message={lastMessage(ids[role])}
+      doing={doing(role)}
       top={role === top}>
       {children}
     </PlayerStrip>
@@ -324,6 +332,25 @@ function GameView({
   // contre le plateau ; en haut, dans le bandeau de l'adversaire (place comptée sur un
   // téléphone). Les deux gardent leur hauteur : le plateau ne bouge pas.
   const activeRole = [top, bottom].find((role) => String(game.currentPlayerId) === ids[role]);
+  // Au tour de l'adversaire (ou d'un joueur, pour un spectateur) : rien à choisir, ce
+  // qu'il fait, contre son nom ; le pion qu'il doit jouer quand il n'en a qu'un (pion
+  // imposé). Une annulation demandée reste dans la ligne d'actions.
+  const doing = (role) => {
+    if (role !== activeRole || role === mine) return null;
+    if (drafting) return 'choisit une carte…';
+    if (!playing || game.takebackRequested) return null;
+    if (choosingOpening) return 'choisit le premier pion…';
+    if (allowed.length > 1) return 'joue…';
+    return (
+      <>
+        joue
+        <Pawn
+          color={allowed[0]}
+          className="size-5"
+        />
+      </>
+    );
+  };
   const slot = (role) => {
     if (game.status === 'finished')
       return role === bottom ? (
@@ -355,12 +382,8 @@ function GameView({
             {role === mine ? 'Garder pour moi' : "Donner à l'adversaire"}
           </button>
         );
-      if (role !== activeRole) return null;
-      return (
-        <span className="text-sm text-ink-soft">
-          {role === mine ? 'Choisissez une carte' : 'choisit une carte…'}
-        </span>
-      );
+      if (role !== activeRole || role !== mine) return null;
+      return <span className="text-sm text-ink-soft">Choisissez une carte</span>;
     }
     if (!playing || role !== activeRole) return null;
     const acting = role === mine;
@@ -382,23 +405,24 @@ function GameView({
       ) : (
         <span className="text-sm text-ink-soft">Annulation demandée…</span>
       );
+    if (!acting) return null; // ce qu'il fait : contre son nom (doing)
     if (choosingOpening)
       return (
         <PawnChoice
           label="Premier pion"
           colors={Object.keys(COLORS)}
-          onChange={acting ? (c) => change({ openingColor: c }) : undefined}
+          onChange={(c) => change({ openingColor: c })}
         />
       );
     return (
       <>
         <PawnChoice
-          label={acting ? 'Votre pion' : 'Son pion'}
+          label="Votre pion"
           colors={allowed}
-          value={acting ? current : undefined}
-          onChange={acting ? setColor : undefined}
+          value={current}
+          onChange={setColor}
         />
-        {acting && imposedColor && (
+        {imposedColor && (
           <PawnChoice
             label="Imposé"
             colors={Object.keys(COLORS)}
