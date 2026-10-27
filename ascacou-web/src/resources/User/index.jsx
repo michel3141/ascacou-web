@@ -19,8 +19,9 @@ function NameEditor() {
   const { modify, commit, committing } = useUserMeta();
   const error = Object.values(errors ?? {})[0];
   return (
-    <span className="flex flex-col items-end">
-      <span className="flex items-center gap-1">
+    <span className="flex min-w-0 flex-col items-end">
+      {/* Pseudo long : le champ rétrécit (le texte y défile), le logo garde sa taille. */}
+      <span className="flex max-w-full items-center gap-1">
         {committing && <span className="text-ink-faint">…</span>}
         <input
           aria-label="Votre pseudo"
@@ -34,7 +35,7 @@ function NameEditor() {
           onChange={(event) => modify({ name: event.target.value })}
           onBlur={() => commit()}
           onKeyDown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
-          className="bg-transparent text-right border-b border-dashed border-ink-faint focus:border-ink focus:border-solid outline-none"
+          className="min-w-0 bg-transparent text-right border-b border-dashed border-ink-faint focus:border-ink focus:border-solid outline-none"
         />
       </span>
       {error && <span className="text-xs text-alert">{describe(error).message}</span>}

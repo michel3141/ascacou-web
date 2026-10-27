@@ -12,13 +12,28 @@ import { GameShow } from '../Game';
 import ShareLink from '../../features/ShareLink';
 import { UserShow } from '../User';
 import { ROOM_STATUS, VISIBILITY } from '../../features/labels';
-import { ConfirmAction, CrossIcon, TopBarActions } from '../../TopBar';
+import { ConfirmAction, CrossIcon, TopBarActions, TopBarTitle } from '../../TopBar';
 
 const roomContext = createContext(null);
 export const useRoom = () => use(roomContext).data;
 export const useRoomMeta = () => use(roomContext).meta;
 
 export const roomScope = createScope(client, { endpoint: '/rooms', method: 'all' });
+
+// Parties gagnées dans un salon : un nul compte pour une demie (1,5).
+const wins = (n) => (n ?? 0).toLocaleString('fr-FR');
+
+// Deux joueurs sur une ligne, séparés par `between` (« contre », un score) : chaque pseudo
+// est tronqué à part, `between` jamais.
+function Players({ hostId, guestId, between, className = '' }) {
+  return (
+    <span className={`flex min-w-0 gap-1 ${className}`}>
+      <span className="min-w-0 truncate">{hostId ? <UserShow id={hostId} /> : '—'}</span>
+      <span className="shrink-0">{between}</span>
+      <span className="min-w-0 truncate">{guestId ? <UserShow id={guestId} /> : '—'}</span>
+    </span>
+  );
+}
 
 // Ligne d'un salon dans une liste de l'accueil : son code (lien), puis ses joueurs (en
 // cours) ou son hôte et ses réglages (en attente). hideMine : dans les listes générales,
@@ -28,24 +43,31 @@ function RoomRow({ hideMine }) {
   const userId = useUserId();
   if (hideMine && userId && [host?.id, guestId].map(String).includes(userId)) return null;
   return (
-    <li className="flex justify-between gap-2 py-1 border-b border-paper-dark">
+    <li className="flex items-baseline justify-between gap-2 py-1 border-b border-paper-dark">
+      {/* Le nom du salon n'est jamais coupé ; les pseudos sont tronqués. */}
       <Link
         to={`/salons/${id}`}
-        className="underline-offset-4 hover:underline">
+        className="shrink-0 underline-offset-4 hover:underline">
         {codeLabel}
       </Link>
-      <span className="text-ink-soft text-sm text-right">
-        {status === 'playing' && guestId ? (
-          <>
-            {host && <UserShow id={host.id} />} contre <UserShow id={guestId} />
-          </>
-        ) : (
-          <>
-            {host && <UserShow id={host.id} />} · <Settings />
-            {visibility === 'private' && ` · ${VISIBILITY.private}`}
-          </>
-        )}
-      </span>
+      {status === 'playing' && guestId ? (
+        <Players
+          hostId={host?.id}
+          guestId={guestId}
+          between="contre"
+          className="text-ink-soft text-sm"
+        />
+      ) : (
+        <span className="min-w-0 text-ink-soft text-sm text-right">
+          {host && (
+            <span className="inline-block max-w-1/2 truncate align-bottom">
+              <UserShow id={host.id} />
+            </span>
+          )}{' '}
+          · <Settings />
+          {visibility === 'private' && ` · ${VISIBILITY.private}`}
+        </span>
+      )}
     </li>
   );
 }
@@ -120,7 +142,7 @@ function ClosedPanel({ isPlayer }) {
       <h2 className="title">Salon fermé</h2>
       {guestId ? (
         <p>
-          <UserShow id={host.id} /> {hostScore} – {guestScore} <UserShow id={guestId} />
+          <UserShow id={host.id} /> {wins(hostScore)} – {wins(guestScore)} <UserShow id={guestId} />
           {' · '}
           {hostScore === guestScore ? (
             'égalité'
@@ -165,15 +187,18 @@ function RoomDetail() {
   const change = (changes) => modify(changes, { delay: 0 });
   const spectators = viewers > 0 && ` · ${viewers} spectateur${viewers > 1 ? 's' : ''}`;
   // Le salon en deux lignes : son nom, puis les parties gagnées et ses réglages. Pendant
-  // une partie, une seule ligne (nom et parties gagnées), les réglages sous le jeu : sur
-  // un téléphone, tout ce qui sert à jouer tient à l'écran.
+  // une partie, son nom monte dans la barre du haut, les parties gagnées ont la ligne pour
+  // elles seules, les réglages passent sous le jeu : sur un téléphone, tout ce qui sert à
+  // jouer tient à l'écran.
   const inGame = gameId && status === 'playing';
   const header = inGame ? (
-    <header className="flex items-baseline gap-3 text-sm">
-      <h2 className="title min-w-0 truncate">{codeLabel}</h2>
-      <span className="ml-auto max-w-1/2 truncate text-ink-soft">
-        <UserShow id={host.id} /> {score?.host ?? 0} – {score?.guest ?? 0} <UserShow id={guestId} />
-      </span>
+    <header className="flex justify-center text-sm text-ink-soft">
+      <TopBarTitle>{codeLabel}</TopBarTitle>
+      <Players
+        hostId={host.id}
+        guestId={guestId}
+        between={`${wins(score?.host)} – ${wins(score?.guest)}`}
+      />
     </header>
   ) : (
     <header className="text-sm">
@@ -182,7 +207,7 @@ function RoomDetail() {
         {/* Salon fermé : le score est dans l'encadré du bilan. */}
         {host && guestId && status !== 'closed' ? (
           <>
-            Parties : <UserShow id={host.id} /> {score?.host ?? 0} – {score?.guest ?? 0}{' '}
+            Parties : <UserShow id={host.id} /> {wins(score?.host)} – {wins(score?.guest)}{' '}
             <UserShow id={guestId} />
           </>
         ) : (
@@ -268,11 +293,12 @@ function ClosedRoomRow() {
   const { host, guestId, score } = useRoom();
   if (!guestId) return null; // fermé sans adversaire : pas de score à montrer
   return (
-    <li className="flex justify-between gap-2 py-1 border-b border-paper-dark text-sm text-ink-soft">
-      <span>
-        {host && <UserShow id={host.id} />} {score?.host ?? 0} – {score?.guest ?? 0}{' '}
-        {guestId ? <UserShow id={guestId} /> : '—'}
-      </span>
+    <li className="flex py-1 border-b border-paper-dark text-sm text-ink-soft">
+      <Players
+        hostId={host?.id}
+        guestId={guestId}
+        between={`${wins(score?.host)} – ${wins(score?.guest)}`}
+      />
     </li>
   );
 }

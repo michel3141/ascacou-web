@@ -4,27 +4,34 @@ import { Link, useLocation } from 'react-router';
 import { useUserId } from './features/identity';
 import { UserShow } from './resources/User';
 
-// Barre du haut : le logo (retour à l'accueil), les actions de la page (annuler,
-// abandonner, fermer le salon) et, sur l'accueil seulement, le pseudo du joueur,
-// modifiable (dans un salon, il est déjà dans son bandeau). Une page y place ses
-// actions avec <TopBarActions>, où qu'elle soit dans l'arbre.
-const SlotContext = createContext(null);
+// Barre du haut : le logo (retour à l'accueil), un titre (le nom du salon pendant une
+// partie, tronqué), les actions de la page (annuler, abandonner, fermer le salon) et, sur
+// l'accueil seulement, le pseudo du joueur, modifiable (dans un salon, il est déjà dans
+// son bandeau). Une page y place son titre et ses actions avec <TopBarTitle> et
+// <TopBarActions>, où qu'elle soit dans l'arbre.
+const SlotContext = createContext({});
 
 export function TopBarActions({ children }) {
-  const slot = use(SlotContext);
-  return slot ? createPortal(children, slot) : null;
+  const { actions } = use(SlotContext);
+  return actions ? createPortal(children, actions) : null;
+}
+
+export function TopBarTitle({ children }) {
+  const { title } = use(SlotContext);
+  return title ? createPortal(children, title) : null;
 }
 
 export function TopBarProvider({ children }) {
-  const [slot, setSlot] = useState(null);
+  const [actions, setActions] = useState(null);
+  const [title, setTitle] = useState(null);
   const userId = useUserId();
   const home = useLocation().pathname === '/';
   return (
-    <SlotContext value={slot}>
+    <SlotContext value={{ actions, title }}>
       <header className="flex items-center gap-3 h-10">
         <Link
           to="/"
-          className="mr-auto">
+          className="mr-auto shrink-0">
           <img
             src="/logo.svg"
             alt="Ascacou"
@@ -32,11 +39,15 @@ export function TopBarProvider({ children }) {
           />
         </Link>
         <div
-          ref={setSlot}
+          ref={setTitle}
+          className="flex-1 min-w-0 truncate title text-sm empty:hidden"
+        />
+        <div
+          ref={setActions}
           className="flex items-center gap-2"
         />
         {home && userId && (
-          <span className="text-sm text-ink-soft">
+          <span className="min-w-0 text-sm text-ink-soft">
             <UserShow
               id={userId}
               editable
