@@ -119,11 +119,21 @@ function Draft({ game, me, mine, card, onChoose, onPass }) {
   const free = ALL_CARDS.filter((c) => !game.hostHand.includes(c) && !game.guestHand.includes(c));
   const picked = 16 - free.length;
   const first = String(game.firstPlayerId) === me;
-  const rule = !mine
-    ? 'Le joueur qui ne commence pas la partie pioche en premier.'
-    : first
-      ? 'Vous commencerez la partie : votre adversaire pioche en premier.'
-      : 'Votre adversaire commencera la partie : vous piochez en premier.';
+  // Qui commencera la partie ; avant la première carte, la conséquence (l'autre pioche
+  // en premier), qui ne sert plus une fois la pioche commencée.
+  const rule = !mine ? (
+    picked === 0 ? (
+      'Le joueur qui ne commence pas la partie pioche en premier.'
+    ) : (
+      <>
+        <UserShow id={game.firstPlayerId} /> commencera la partie.
+      </>
+    )
+  ) : first ? (
+    `Vous commencerez la partie${picked === 0 ? ' : votre adversaire pioche en premier' : ''}.`
+  ) : (
+    `Votre adversaire commencera la partie${picked === 0 ? ' : vous piochez en premier' : ''}.`
+  );
   return (
     <div className="flex flex-col gap-2 py-2">
       <p className="flex flex-col items-center leading-tight">
